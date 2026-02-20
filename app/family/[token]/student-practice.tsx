@@ -40,8 +40,11 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
   const hasInitializedRef = useRef(false);
 
   const currentItem = data.items[currentIndex];
-  const existingSubmission = data.submissions.find(
-    (s) => s.studentId === student.id && s.taskItemId === currentItem?.id
+  const existingSubmission = useMemo(
+    () => data.submissions.find(
+      (s) => s.studentId === student.id && s.taskItemId === currentItem?.id
+    ),
+    [data.submissions, student.id, currentItem?.id]
   );
 
   // Find first incomplete item — only on initial load
