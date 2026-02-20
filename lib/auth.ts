@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 
 import { env } from "@/lib/env";
 import { HttpError } from "@/lib/http";
+import { resolveFamilyByToken } from "@/lib/family-link";
 
 type SessionRole = "admin" | "teacher";
 
@@ -78,4 +79,33 @@ export async function requireTeacher() {
     throw new HttpError("Unauthorized", 401);
   }
   return session as SessionPayload & { teacherId: string };
+}
+
+export type AuthResult =
+  | { type: "admin"; session: SessionPayload }
+  | { type: "teacher"; session: SessionPayload & { teacherId: string } }
+  | { type: "family"; familyId: string; linkId: string };
+
+export async function requireAnyAuth(token?: string | null): Promise<AuthResult> {
+  // First try session-based auth (cookie)
+  const session = await getSession();
+
+  if (session) {
+    if (session.role === "admin") {
+      return { type: "admin", session };
+    }
+    if (session.role === "teacher" && session.teacherId) {
+      return { type: "teacher", session: session as SessionPayload & { teacherId: string } };
+    }
+  }
+
+  // Fall back to token-based auth (family link)
+  if (token) {
+    const link = await resolveFamilyByToken(token);
+    if (link) {
+      return { type: "family", familyId: link.familyId, linkId: link.id };
+    }
+  }
+
+  throw new HttpError("Unauthorized", 401);
 }
