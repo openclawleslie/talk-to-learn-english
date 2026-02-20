@@ -38,6 +38,7 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
   const recorderMimeTypeRef = useRef("");
   const recorderExtRef = useRef("webm");
   const hasInitializedRef = useRef(false);
+  const dingAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentItem = data.items[currentIndex];
   const existingSubmission = data.submissions.find(
@@ -55,6 +56,13 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
       setCurrentIndex(firstIncomplete);
     }
   }, [data.items, data.submissions, student.id]);
+
+  // Preload ding sound
+  useEffect(() => {
+    const audio = new Audio("/ding.mp3");
+    audio.preload = "auto";
+    dingAudioRef.current = audio;
+  }, []);
 
   async function playReference() {
     if (!currentItem?.referenceAudioUrl || !audioRef.current) return;
@@ -144,7 +152,12 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
       if (!res.ok) throw new Error("提交失败");
 
       // 播放提示音
-      try { new Audio("/ding.mp3").play(); } catch {}
+      try {
+        if (dingAudioRef.current) {
+          dingAudioRef.current.currentTime = 0;
+          dingAudioRef.current.play();
+        }
+      } catch {}
 
       setLastResult({
         score: json.data.score,
