@@ -1884,15 +1884,470 @@ curl -X PUT http://localhost:3000/api/admin/scoring-config \
 
 ### 老師端點
 
+所有老師端點都需要老師認證（`requireTeacher()`）。請確保在請求時攜帶有效的 session cookie。管理員（`role === "admin"`）也可以存取這些端點。
+
 | 方法 | 路徑 | 說明 | 認證 |
 |------|------|------|------|
 | GET | `/api/teacher/class-courses` | 列出已分配班級 | Teacher |
 | GET | `/api/teacher/families` | 列出家庭 | Teacher |
 | POST | `/api/teacher/families` | 建立家庭+孩子 | Teacher |
-| GET | `/api/teacher/families/:id` | 取得家庭詳細資訊 | Teacher |
+| PUT | `/api/teacher/families/:id` | 更新家庭資訊 | Teacher |
 | POST | `/api/teacher/families/:id/reset-link` | 重置家庭連結 | Teacher |
 | GET | `/api/teacher/classes/:id/summary` | 取得班級表現摘要 | Teacher |
 | GET | `/api/teacher/weekly-tasks` | 列出每週任務 | Teacher |
+
+---
+
+### GET /api/teacher/class-courses
+
+列出老師已分配的班級-課程組合及學生數量。
+
+**認證要求：** Teacher
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "classCourses": [
+      {
+        "id": "uuid",
+        "class_id": "uuid",
+        "course_id": "uuid",
+        "class_name": "一年級 A 班",
+        "course_name": "英語會話",
+        "student_count": 25
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/teacher/class-courses \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 僅回傳當前登入老師被分配的班級-課程組合
+- `student_count` 為該班級-課程下所有家庭的學生總數
+- 透過 `teacher_assignments` 表確認老師權限
+
+---
+
+### GET /api/teacher/families
+
+列出老師負責班級中的所有家庭及其學生資訊。
+
+**認證要求：** Teacher
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "families": [
+      {
+        "id": "uuid",
+        "parentName": "王小明家長",
+        "note": "備註資訊",
+        "classCourseId": "uuid",
+        "createdAt": "2026-02-15T08:00:00.000Z",
+        "className": "一年級 A 班",
+        "courseName": "英語會話",
+        "students": [
+          {
+            "id": "uuid",
+            "name": "王小明"
+          },
+          {
+            "id": "uuid",
+            "name": "王小華"
+          }
+        ],
+        "token": "a1b2c3d4e5f6g7h8..."
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/teacher/families \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 僅回傳老師已分配班級-課程下的家庭
+- 每個家庭包含其學生列表
+- `token` 為當前有效的家庭連結權杖（如無有效權杖則為 `null`）
+- 家庭連結格式：`/family/{token}`
+
+---
+
+### POST /api/teacher/families
+
+建立新家庭並新增學生。
+
+**認證要求：** Teacher
+
+**請求格式：**
+
+```json
+{
+  "parentName": "string (必填，最少 1 字元)",
+  "note": "string (選填，預設空字串)",
+  "classCourseId": "string (必填，UUID)",
+  "students": [
+    {
+      "name": "string (必填，最少 1 字元)"
+    }
+  ]
+}
+```
+
+**Zod Schema：**
+```typescript
+const createFamilySchema = z.object({
+  parentName: z.string().min(1),
+  note: z.string().default(""),
+  classCourseId: z.string().uuid(),
+  students: z.array(z.object({ name: z.string().min(1) })).min(1),
+});
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "familyId": "uuid",
+    "token": "a1b2c3d4e5f6g7h8..."
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "parentName": ["Required"],
+        "students": ["Array must contain at least 1 element(s)"]
+      }
+    }
+  }
+}
+```
+
+無權限的班級-課程（403）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Forbidden class/course"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/teacher/families \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "parentName": "李大華家長",
+    "note": "兄妹兩人",
+    "classCourseId": "...",
+    "students": [
+      {"name": "李小明"},
+      {"name": "李小華"}
+    ]
+  }'
+```
+
+**注意事項：**
+- 老師僅能為自己負責的 `classCourseId` 建立家庭
+- `createdByTeacherId` 會自動設定為當前登入老師
+- 成功建立後會自動產生家庭連結權杖
+- 至少需要新增一位學生
+
+---
+
+### PUT /api/teacher/families/:id
+
+更新家庭資訊及學生列表。
+
+**認證要求：** Teacher
+
+**請求格式：**
+
+```json
+{
+  "parentName": "string (必填，最少 1 字元)",
+  "note": "string (必填)",
+  "students": [
+    {
+      "id": "string (選填，UUID，現有學生)",
+      "name": "string (必填，最少 1 字元)"
+    }
+  ]
+}
+```
+
+**Zod Schema：**
+```typescript
+const updateFamilySchema = z.object({
+  parentName: z.string().min(1),
+  note: z.string(),
+  students: z.array(
+    z.object({
+      id: z.string().optional(),
+      name: z.string().min(1),
+    })
+  ).min(1),
+});
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "success": true
+  }
+}
+```
+
+**錯誤回應：**
+
+家庭不存在或無權限（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Family not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X PUT http://localhost:3000/api/teacher/families/{id} \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "parentName": "李大華家長（更新）",
+    "note": "新增備註",
+    "students": [
+      {"id": "...", "name": "李小明（更新）"},
+      {"name": "李小美"}
+    ]
+  }'
+```
+
+**注意事項：**
+- 僅能更新由當前老師建立的家庭（`createdByTeacherId` 驗證）
+- 學生更新邏輯：
+  - 有 `id` 且存在 → 更新姓名
+  - 有 `id` 但不存在 → 忽略
+  - 無 `id` → 新增學生
+  - 原有學生若不在新列表中 → 刪除
+- 至少需要保留一位學生
+
+---
+
+### POST /api/teacher/families/:id/reset-link
+
+重置家庭連結，作廢舊權杖並產生新權杖。
+
+**認證要求：** Teacher
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "familyId": "uuid",
+    "token": "x9y8z7w6v5u4t3s2..."
+  }
+}
+```
+
+**錯誤回應：**
+
+家庭不存在或無權限（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Family not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/teacher/families/{id}/reset-link \
+  -H "Content-Type: application/json" \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 僅能重置由當前老師建立的家庭
+- 舊權杖會被標記為 `revoked`，立即失效
+- 新權杖會自動產生並設為 `active`
+- 用於家長遺失連結或安全性考量時重新發放
+
+---
+
+### GET /api/teacher/classes/:id/summary
+
+取得指定班級-課程的表現摘要統計。
+
+**認證要求：** Teacher
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "className": "一年級 A 班",
+    "courseName": "英語會話",
+    "totalStudents": 25,
+    "completionRate": 80.5,
+    "averageScore": 78.3,
+    "students": [
+      {
+        "studentId": "uuid",
+        "studentName": "王小明",
+        "completedTasks": 8,
+        "totalTasks": 10,
+        "averageScore": 82.5,
+        "lowScoreSentences": 1
+      }
+    ],
+    "lowScoreItems": [
+      {
+        "taskItemId": "uuid",
+        "studentId": "uuid",
+        "studentName": "王小明",
+        "score": 65,
+        "feedback": "發音需要加強...",
+        "audioUrl": "https://...",
+        "sentenceText": "Hello, how are you?"
+      }
+    ]
+  }
+}
+```
+
+**錯誤回應：**
+
+無權限的班級-課程（403）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Forbidden class/course"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/teacher/classes/{classCourseId}/summary \
+  -b cookies.txt
+```
+
+**注意事項：**
+- `:id` 參數為 `classCourseId`（非 `classId`）
+- 僅能查看老師已分配的班級-課程
+- `completionRate` 為完成至少一項任務的學生比例
+- `averageScore` 為所有提交作業的平均分數
+- `lowScoreItems` 僅顯示分數 < 70 的提交，最多 20 筆
+- `totalTasks` 固定為 10（每週任務項目數）
+
+---
+
+### GET /api/teacher/weekly-tasks
+
+列出老師負責班級的所有每週任務及其項目。
+
+**認證要求：** Teacher
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "weeklyTasks": [
+      {
+        "id": "uuid",
+        "classCourseId": "uuid",
+        "className": "一年級 A 班",
+        "courseName": "英語會話",
+        "weekNumber": 8,
+        "startDate": "2026-02-17T00:00:00.000Z",
+        "endDate": "2026-02-23T23:59:59.000Z",
+        "status": "published",
+        "items": [
+          {
+            "weeklyTaskId": "uuid",
+            "orderIndex": 1,
+            "sentenceText": "Hello, how are you?",
+            "audioUrl": "https://..."
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/teacher/weekly-tasks \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 僅回傳老師已分配班級-課程的每週任務
+- 依 `weekStart` 降序排序（最新的在前）
+- `weekNumber` 為該年度第幾週（從 1 月 1 日起算）
+- `items` 依 `orderIndex` 排序（1-10）
+- `status` 可能為 "draft" 或 "published"
+- 如老師無任何分配，回傳空陣列
+
+---
 
 ### 家長/孩子端點
 
