@@ -1,6 +1,23 @@
 import "dotenv/config";
 import { z } from "zod";
 
+/**
+ * Zod schema for validating environment variables.
+ *
+ * Defines required and optional configuration with defaults:
+ * - DATABASE_URL: Required database connection string
+ * - ADMIN_USERNAME/PASSWORD: Admin credentials (defaults: "admin"/"admin123")
+ * - SESSION_SECRET: Secret for session encryption (default: "dev-session-secret")
+ * - DEFAULT_TZ: Default timezone (default: "Asia/Shanghai")
+ * - AI_BASE_URL/API_KEY: Optional AI service configuration
+ * - AI_MODEL: Main AI model (default: "gpt-5")
+ * - AI_SCORING_MODEL: Model for scoring speech (default: "gpt-4o-mini")
+ * - AI_TRANSCRIBE_MODEL: Model for audio transcription (default: "gpt-4o-mini-transcribe")
+ * - AI_TTS_MODEL: Model for text-to-speech (default: "gpt-4o-mini-tts")
+ * - BLOB_READ_WRITE_TOKEN: Optional Vercel Blob storage token
+ *
+ * @internal
+ */
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   ADMIN_USERNAME: z.string().default("admin"),
@@ -16,6 +33,25 @@ const envSchema = z.object({
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
 });
 
+/**
+ * Validated environment configuration object.
+ *
+ * Parses and validates environment variables from process.env using Zod schema.
+ * Ensures all required variables are present and have valid values, applies defaults
+ * for optional fields, and provides type-safe access to configuration throughout the app.
+ *
+ * @throws {z.ZodError} If required environment variables are missing or invalid
+ *
+ * @example
+ * ```ts
+ * import { env } from '@/lib/env';
+ *
+ * // Access validated environment variables
+ * const dbUrl = env.DATABASE_URL;
+ * const apiKey = env.AI_API_KEY; // string | undefined
+ * const model = env.AI_MODEL; // "gpt-5" by default
+ * ```
+ */
 export const env = envSchema.parse({
   DATABASE_URL: process.env.DATABASE_URL,
   ADMIN_USERNAME: process.env.ADMIN_USERNAME,
