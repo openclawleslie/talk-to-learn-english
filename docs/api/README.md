@@ -2785,9 +2785,351 @@ curl -X GET "http://localhost:3000/api/family/performance?token=a1b2c3d4e5f6g7h8
 
 | 方法 | 路徑 | 說明 | 認證 |
 |------|------|------|------|
-| POST | `/api/ai/score` | AI 評分（ASR + LLM） | Admin/Teacher |
-| POST | `/api/audio/upload` | 上傳音訊檔案 | Admin/Teacher |
+| POST | `/api/ai/score` | AI 評分（ASR + LLM） | 無 |
+| POST | `/api/audio/upload` | 上傳音訊檔案 | 無 |
 | POST | `/api/audio/generate-tts` | 產生 TTS 音訊 | Admin |
+
+---
+
+### POST /api/ai/score
+
+AI 評分端點。接受句子文字及音訊檔案或轉錄文字，回傳評分、回饋及星級評定。
+
+**認證要求：** 無
+
+**Content-Type：** `application/json` 或 `multipart/form-data`（雙重支援）
+
+**請求格式（JSON）：**
+
+```json
+{
+  "sentenceText": "string (必填，最少 1 字元)",
+  "transcript": "string (選填，轉錄文字)"
+}
+```
+
+**請求格式（Multipart Form Data）：**
+
+表單欄位：
+- `sentenceText` (必填)：目標句子文字（string）
+- `transcript` (選填)：手動提供的轉錄文字（string）
+- `file` (選填)：音訊檔案（File，如未提供 `transcript`，則必填）
+
+**Zod Schema：**
+```typescript
+const schemaBody = z.object({
+  sentenceText: z.string().min(1),
+  transcript: z.string().optional(),
+});
+```
+
+**處理邏輯：**
+
+1. **JSON 模式**：直接使用 `transcript` 欄位
+2. **Multipart 模式**：
+   - 如提供 `transcript` → 直接使用
+   - 如未提供 `transcript` 但有 `file` → 自動呼叫 ASR（`transcribeAudio()`）
+   - 如未提供任何轉錄資訊 → 使用空字串
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "transcript": "Hello, how are you?",
+    "score": 85,
+    "feedback": "發音不錯，語調可以更自然一些",
+    "stars": 2
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "sentenceText": ["Required"]
+      }
+    }
+  }
+}
+```
+
+**範例請求（JSON）：**
+```bash
+curl -X POST http://localhost:3000/api/ai/score \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentenceText": "Hello, how are you?",
+    "transcript": "Hello, how are you?"
+  }'
+```
+
+**範例請求（Multipart）：**
+```bash
+curl -X POST http://localhost:3000/api/ai/score \
+  -F "sentenceText=Hello, how are you?" \
+  -F "file=@recording.webm"
+```
+
+**JavaScript 範例（JSON）：**
+```javascript
+const response = await fetch('/api/ai/score', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    sentenceText: 'Hello, how are you?',
+    transcript: 'Hello, how are you?',
+  }),
+});
+```
+
+**JavaScript 範例（Multipart）：**
+```javascript
+const formData = new FormData();
+formData.append('sentenceText', 'Hello, how are you?');
+formData.append('file', audioBlob, 'recording.webm');
+
+const response = await fetch('/api/ai/score', {
+  method: 'POST',
+  body: formData,
+});
+```
+
+**注意事項：**
+- **雙重內容類型支援**：根據 `Content-Type` header 自動切換解析模式
+  - `application/json` → 解析 JSON payload
+  - `multipart/form-data` → 解析表單資料
+- ASR 使用 OpenAI Whisper API（或相容端點）
+- LLM 評分使用 `scoreSpokenSentence()` 函式（基於 OpenAI GPT API）
+- `stars` 計算邏輯：
+  - 分數 ≤ oneStarMax → 1 星
+  - oneStarMax < 分數 ≤ twoStarMax → 2 星
+  - 分數 > twoStarMax → 3 星
+- 預設評分閾值：`{ oneStarMax: 70, twoStarMax: 84 }`（可透過 `/api/admin/scoring-config` 調整）
+- `feedback` 為 AI 生成的改進建議（zh-TW）
+- 如 ASR 或評分失敗，會拋出錯誤並回傳 500 狀態碼
+
+---
+
+### POST /api/audio/upload
+
+上傳音訊檔案至 Vercel Blob 儲存空間。
+
+**認證要求：** 無
+
+**Content-Type：** `multipart/form-data`
+
+**請求格式：**
+
+表單欄位：
+- `file` (必填)：音訊檔案（File）
+- `folder` (選填)：儲存資料夾名稱（string，預設 "submissions"）
+
+**支援音訊格式：**
+- WebM（Opus 編碼，瀏覽器錄音預設）
+- WAV（PCM 16-bit）
+- MP3
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "url": "https://...blob.vercel-storage.com/...",
+    "pathname": "submissions/1708416000000-recording.webm",
+    "contentType": "audio/webm",
+    "contentDisposition": "attachment; filename=\"1708416000000-recording.webm\""
+  }
+}
+```
+
+**錯誤回應：**
+
+缺少檔案（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "file is required"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/audio/upload \
+  -F "file=@recording.webm" \
+  -F "folder=reference-audio"
+```
+
+**JavaScript 範例：**
+```javascript
+const formData = new FormData();
+formData.append('file', audioBlob, 'recording.webm');
+formData.append('folder', 'submissions');
+
+const response = await fetch('/api/audio/upload', {
+  method: 'POST',
+  body: formData,
+});
+
+const { data } = await response.json();
+console.log('Uploaded to:', data.url);
+```
+
+**注意事項：**
+- 使用 Vercel Blob 的 `put()` API 上傳
+- 檔案命名格式：`{folder}/{timestamp}-{originalName}`
+- `url` 為公開或私有 URL（依據 Vercel Blob 設定）
+- `pathname` 為儲存路徑（相對於 Blob 根目錄）
+- `contentType` 會自動偵測（基於副檔名）
+- `contentDisposition` 設為 `attachment`（下載模式）
+- 常見 `folder` 值：
+  - `submissions`：學生錄音作業
+  - `reference-audio`：參考音訊
+- 上傳失敗會拋出錯誤並回傳 500 狀態碼
+
+---
+
+### POST /api/audio/generate-tts
+
+使用 OpenAI TTS API（或相容端點）產生文字轉語音（TTS）音訊，並上傳至 Vercel Blob。
+
+**認證要求：** Admin
+
+**Content-Type：** `application/json`
+
+**請求格式：**
+
+```json
+{
+  "text": "string (必填，1-1000 字元)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const generateTTSSchema = z.object({
+  text: z.string().min(1).max(1000),
+});
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "audioUrl": "https://...blob.vercel-storage.com/reference-audio/tts-1708416000000.mp3"
+  }
+}
+```
+
+**錯誤回應：**
+
+未登入或非管理員（401）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Unauthorized"
+  }
+}
+```
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "text": ["String must contain at most 1000 character(s)"]
+      }
+    }
+  }
+}
+```
+
+API 金鑰缺失（500）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "API Key is missing. Please set AI_API_KEY or OPENAI_API_KEY in environment variables."
+  }
+}
+```
+
+TTS API 錯誤（500）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "TTS API error: 429 - Rate limit exceeded"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/audio/generate-tts \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"text":"Hello, how are you?"}'
+```
+
+**JavaScript 範例：**
+```javascript
+const response = await fetch('/api/audio/generate-tts', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    text: 'Hello, how are you?',
+  }),
+});
+
+const { data } = await response.json();
+console.log('TTS audio URL:', data.audioUrl);
+```
+
+**注意事項：**
+- **需要管理員認證**（`requireAdmin()`）
+- 使用 OpenAI TTS API 生成語音：
+  - **Base URL**：`process.env.AI_BASE_URL`（預設 `https://api.openai.com/v1`）
+  - **API Key**：`process.env.AI_API_KEY` 或 `process.env.OPENAI_API_KEY`
+  - **模型**：`process.env.AI_TTS_MODEL`（預設 `tts-1`）
+  - **語音**：`alloy`（固定）
+  - **格式**：`mp3`
+- TTS API endpoint：`{baseUrl}/audio/speech`
+- 處理流程：
+  1. 驗證管理員權限
+  2. 驗證輸入文字（1-1000 字元）
+  3. 呼叫 OpenAI TTS API
+  4. 驗證回應為有效 MP3 資料
+  5. 上傳至 Vercel Blob（`reference-audio/` 資料夾）
+  6. 回傳音訊 URL
+- MP3 資料驗證：
+  - 檢查檔案開頭為 `FF FB`/`FF F3`（MPEG audio frame sync）
+  - 或 `ID3` tag（`49 44 33`）
+  - 防止 API 錯誤訊息被誤認為音訊資料
+- 檔案命名格式：`reference-audio/tts-{timestamp}.mp3`
+- 錯誤日誌：詳細記錄 TTS API 回應（header、狀態碼、錯誤訊息）
+- 如 TTS API 或上傳失敗，會拋出錯誤並回傳 500 狀態碼
+- 常見錯誤：
+  - API Key 缺失或無效
+  - 超過 rate limit
+  - 文字包含不支援的字元
+  - 網路連線問題
 
 ---
 
