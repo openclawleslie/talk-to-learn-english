@@ -1,0 +1,39 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/**)",
+      "Write(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/**)",
+      "Edit(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/**)",
+      "Glob(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/**)",
+      "Grep(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/**)",
+      "Read(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/.auto-claude/specs/003-make-teacher-navigation-mobile-responsive/**)",
+      "Write(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/.auto-claude/specs/003-make-teacher-navigation-mobile-responsive/**)",
+      "Edit(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/worktrees/tasks/003-make-teacher-navigation-mobile-responsive/.auto-claude/specs/003-make-teacher-navigation-mobile-responsive/**)",
+      "Read(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/**)",
+      "Write(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/**)",
+      "Edit(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/**)",
+      "Glob(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/**)",
+      "Grep(/Users/claw/projects/071-talk-to-learn-english-master/.auto-claude/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}
