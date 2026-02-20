@@ -200,9 +200,12 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
   }
 
   // Calculate progress
-  const completedCount = data.items.filter((item) =>
-    data.submissions.find((s) => s.studentId === student.id && s.taskItemId === item.id)
-  ).length;
+  const completedCount = useMemo(
+    () => data.items.filter((item) =>
+      data.submissions.find((s) => s.studentId === student.id && s.taskItemId === item.id)
+    ).length,
+    [data.items, data.submissions, student.id]
+  );
 
   if (!currentItem) {
     return (
