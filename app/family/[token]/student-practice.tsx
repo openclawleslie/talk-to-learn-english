@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronLeft, Pause, Mic, Square, Star, Volume2, Check, RotateCcw } from "lucide-react";
 import type { FamilyData } from "./page";
 import { StarCelebration } from "@/components/star-celebration";
@@ -41,8 +41,11 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
   const dingAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentItem = data.items[currentIndex];
-  const existingSubmission = data.submissions.find(
-    (s) => s.studentId === student.id && s.taskItemId === currentItem?.id
+  const existingSubmission = useMemo(
+    () => data.submissions.find(
+      (s) => s.studentId === student.id && s.taskItemId === currentItem?.id
+    ),
+    [data.submissions, student.id, currentItem?.id]
   );
 
   // Find first incomplete item — only on initial load
@@ -210,9 +213,12 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
   }
 
   // Calculate progress
-  const completedCount = data.items.filter((item) =>
-    data.submissions.find((s) => s.studentId === student.id && s.taskItemId === item.id)
-  ).length;
+  const completedCount = useMemo(
+    () => data.items.filter((item) =>
+      data.submissions.find((s) => s.studentId === student.id && s.taskItemId === item.id)
+    ).length,
+    [data.items, data.submissions, student.id]
+  );
 
   if (!currentItem) {
     return (
