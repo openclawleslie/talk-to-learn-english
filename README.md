@@ -22,8 +22,8 @@ npm install
 ```env
 DATABASE_URL=
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
-SESSION_SECRET=dev-session-secret
+ADMIN_PASSWORD=your_secure_password_here
+SESSION_SECRET=your_secure_session_secret_here
 DEFAULT_TZ=Asia/Shanghai
 AI_BASE_URL=
 AI_API_KEY=
