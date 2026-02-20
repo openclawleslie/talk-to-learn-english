@@ -46,3 +46,6 @@ tmp/
 
 test-results/
 playwright-report/
+
+# Auto Claude data directory
+.auto-claude/

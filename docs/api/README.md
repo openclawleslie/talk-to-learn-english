@@ -603,6 +603,1246 @@ curl -X POST http://localhost:3000/api/auth/teacher/logout \
 
 ---
 
+## 管理員端點
+
+所有管理員端點都需要管理員認證（`requireAdmin()`）。請確保在請求時攜帶有效的 session cookie。
+
+### GET /api/admin/classes
+
+列出所有班級。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "classes": [
+      {
+        "id": "uuid",
+        "name": "一年級 A 班",
+        "timezone": "Asia/Shanghai",
+        "created_at": "2026-01-15T08:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/classes \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 回傳所有班級，依 `name` 欄位排序
+- 班級用於組織學生和課程
+
+---
+
+### POST /api/admin/classes
+
+建立新班級。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "name": "string (必填，最少 1 字元)",
+  "timezone": "string (選填，預設 'Asia/Shanghai')"
+}
+```
+
+**Zod Schema：**
+```typescript
+const createClassSchema = z.object({
+  name: z.string().min(1),
+  timezone: z.string().min(1).default("Asia/Shanghai"),
+});
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "name": "一年級 A 班",
+    "timezone": "Asia/Taipei",
+    "created_at": "2026-02-20T08:00:00.000Z"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "name": ["Required"]
+      }
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/admin/classes \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"二年級 B 班","timezone":"Asia/Taipei"}'
+```
+
+**注意事項：**
+- `timezone` 影響該班級的日期顯示格式
+- 常見時區：`Asia/Shanghai`, `Asia/Taipei`, `Asia/Hong_Kong`
+
+---
+
+### PUT /api/admin/classes/:id
+
+更新指定班級資訊。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "name": "string (必填，最少 1 字元)",
+  "timezone": "string (選填，預設 'Asia/Shanghai')"
+}
+```
+
+**Zod Schema：** `createClassSchema`（與 POST 相同）
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "name": "一年級 A 班（更新後）",
+    "timezone": "Asia/Taipei",
+    "created_at": "2026-01-15T08:00:00.000Z"
+  }
+}
+```
+
+**錯誤回應：**
+
+班級不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Class not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X PUT http://localhost:3000/api/admin/classes/{id} \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"一年級 A 班（更新）","timezone":"Asia/Shanghai"}'
+```
+
+---
+
+### DELETE /api/admin/classes/:id
+
+刪除指定班級。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Class deleted successfully"
+  }
+}
+```
+
+**錯誤回應：**
+
+班級不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Class not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X DELETE http://localhost:3000/api/admin/classes/{id} \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 刪除班級會級聯刪除相關的 class-courses 和 families
+- 請謹慎使用此操作
+
+---
+
+### GET /api/admin/courses
+
+列出所有課程。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "courses": [
+      {
+        "id": "uuid",
+        "name": "英語會話",
+        "level": "Beginner",
+        "created_at": "2026-01-15T08:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/courses \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 回傳所有課程，依 `name` 欄位排序
+- 課程代表教學內容等級（如 Beginner, Intermediate, Advanced）
+
+---
+
+### POST /api/admin/courses
+
+建立新課程。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "name": "string (必填，最少 1 字元)",
+  "level": "string (必填，最少 1 字元)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const createCourseSchema = z.object({
+  name: z.string().min(1),
+  level: z.string().min(1),
+});
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "name": "英語會話",
+    "level": "Intermediate",
+    "created_at": "2026-02-20T08:00:00.000Z"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "name": ["Required"],
+        "level": ["Required"]
+      }
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/admin/courses \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"進階英語","level":"Advanced"}'
+```
+
+---
+
+### PUT /api/admin/courses/:id
+
+更新指定課程資訊。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "name": "string (必填，最少 1 字元)",
+  "level": "string (必填，最少 1 字元)"
+}
+```
+
+**Zod Schema：** `createCourseSchema`（與 POST 相同）
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "name": "進階英語會話",
+    "level": "Advanced",
+    "created_at": "2026-01-15T08:00:00.000Z"
+  }
+}
+```
+
+**錯誤回應：**
+
+課程不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Course not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X PUT http://localhost:3000/api/admin/courses/{id} \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"進階英語會話","level":"Advanced"}'
+```
+
+---
+
+### DELETE /api/admin/courses/:id
+
+刪除指定課程。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Course deleted successfully"
+  }
+}
+```
+
+**錯誤回應：**
+
+課程不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Course not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X DELETE http://localhost:3000/api/admin/courses/{id} \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 刪除課程會級聯刪除相關的 class-courses
+- 請謹慎使用此操作
+
+---
+
+### GET /api/admin/class-courses
+
+列出所有班級-課程關聯。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "classCourses": [
+      {
+        "id": "uuid",
+        "class_id": "uuid",
+        "course_id": "uuid",
+        "class_name": "一年級 A 班",
+        "course_name": "英語會話"
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/class-courses \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 回傳所有班級-課程關聯，包含班級和課程名稱
+- 透過 LEFT JOIN 取得可讀性較高的資料
+
+---
+
+### POST /api/admin/class-courses
+
+建立班級-課程關聯。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "classId": "string (必填，UUID)",
+  "courseId": "string (必填，UUID)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const createClassCourseSchema = z.object({
+  classId: z.string().uuid(),
+  courseId: z.string().uuid(),
+});
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "class_id": "uuid",
+    "course_id": "uuid"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "classId": ["Invalid uuid"],
+        "courseId": ["Invalid uuid"]
+      }
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/admin/class-courses \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"classId":"...","courseId":"..."}'
+```
+
+**注意事項：**
+- 建立班級和課程之間的關聯
+- 一個班級可以有多個課程，一個課程可以分配給多個班級
+
+---
+
+### DELETE /api/admin/class-courses/:id
+
+刪除指定班級-課程關聯。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Class course deleted successfully"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X DELETE http://localhost:3000/api/admin/class-courses/{id} \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 刪除關聯不會刪除班級或課程本身
+- 會級聯刪除相關的 families 和 weekly_tasks
+
+---
+
+### GET /api/admin/teacher
+
+列出所有老師及其班級分配。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "teachers": [
+      {
+        "id": "uuid",
+        "name": "張老師",
+        "email": "zhang@example.com",
+        "is_active": true,
+        "created_at": "2026-01-15T08:00:00.000Z",
+        "classCourseNames": ["一年級 A 班-英語會話", "二年級 B 班-進階英語"]
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/teacher \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 回傳所有老師（不含密碼雜湊）
+- `classCourseNames` 陣列顯示老師負責的班級-課程組合
+- 依 `created_at` 排序
+
+---
+
+### POST /api/admin/teacher
+
+建立新老師帳號。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "name": "string (必填，最少 1 字元)",
+  "email": "string (必填，email 格式)",
+  "password": "string (必填，最少 6 字元)",
+  "classCourseIds": "array of UUID (選填，預設 [])"
+}
+```
+
+**Zod Schema：**
+```typescript
+const createTeacherSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(6),
+  classCourseIds: z.array(z.string().uuid()).default([]),
+});
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "name": "張老師",
+    "email": "zhang@example.com",
+    "password_hash": "...",
+    "is_active": true,
+    "is_admin": false,
+    "created_at": "2026-02-20T08:00:00.000Z"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "email": ["Invalid email"],
+        "password": ["String must contain at least 6 character(s)"]
+      }
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/admin/teacher \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"李老師","email":"li@example.com","password":"pass123","classCourseIds":["..."]}'
+```
+
+**注意事項：**
+- 密碼使用 bcrypt（salt rounds = 10）進行雜湊
+- 新建老師預設為啟用狀態（`isActive = true`）
+- 新建老師預設非管理員（`isAdmin = false`）
+- 如提供 `classCourseIds`，會自動建立 teacher_assignments
+
+---
+
+### PUT /api/admin/teacher/:id
+
+更新指定老師資訊。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "name": "string (選填，最少 1 字元)",
+  "email": "string (選填，email 格式)",
+  "password": "string (選填，最少 6 字元)",
+  "classCourseIds": "array of UUID (選填)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const updateTeacherSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  password: z.string().min(6).optional(),
+  classCourseIds: z.array(z.string().uuid()).optional(),
+});
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "name": "張老師（更新）",
+    "email": "zhang.new@example.com",
+    "password_hash": "...",
+    "is_active": true,
+    "is_admin": false,
+    "created_at": "2026-01-15T08:00:00.000Z"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X PUT http://localhost:3000/api/admin/teacher/{id} \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"張老師（更新）","classCourseIds":["..."]}'
+```
+
+**注意事項：**
+- 所有欄位皆為選填，僅更新提供的欄位
+- 若提供 `classCourseIds`，會先刪除現有分配再建立新分配
+- 若提供 `password`，會重新進行 bcrypt 雜湊
+
+---
+
+### PATCH /api/admin/teacher/:id
+
+部分更新指定老師資訊（無驗證）。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+接受任意 JSON payload（不進行 schema 驗證）。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Teacher updated successfully"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X PATCH http://localhost:3000/api/admin/teacher/{id} \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"is_active":false}'
+```
+
+**注意事項：**
+- 此端點不進行輸入驗證，請謹慎使用
+- 常用於快速更新單一欄位（如 `is_active`, `is_admin`）
+
+---
+
+### DELETE /api/admin/teacher/:id
+
+刪除指定老師。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Teacher deleted successfully"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X DELETE http://localhost:3000/api/admin/teacher/{id} \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 刪除老師會級聯刪除相關的 teacher_assignments
+- 請謹慎使用此操作
+
+---
+
+### POST /api/admin/teacher/:id/reset-password
+
+重置指定老師的密碼。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "password": "string (必填，最少 6 字元)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const resetPasswordSchema = z.object({
+  password: z.string().min(6, "密码至少6位"),
+});
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Password reset successfully"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "password": ["密码至少6位"]
+      }
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/admin/teacher/{id}/reset-password \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"password":"newpass123"}'
+```
+
+**注意事項：**
+- 密碼使用 bcrypt（salt rounds = 10）進行雜湊
+- 用於管理員協助老師重置密碼
+
+---
+
+### GET /api/admin/teacher/:id/assignments
+
+取得指定老師的班級分配。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "assignments": [
+      {
+        "id": "uuid",
+        "teacher_id": "uuid",
+        "class_course_id": "uuid"
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/teacher/{id}/assignments \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 回傳老師負責的所有 class-course 關聯
+- 建議搭配 GET /api/admin/class-courses 取得完整資訊
+
+---
+
+### GET /api/admin/weekly-tasks
+
+列出所有每週任務。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "tasks": [
+      {
+        "id": "uuid",
+        "class_course_id": "uuid",
+        "class_name": "一年級 A 班",
+        "course_name": "英語會話",
+        "week_start": "2026-02-17T00:00:00.000Z",
+        "week_end": "2026-02-23T23:59:59.000Z",
+        "status": "published",
+        "created_at": "2026-02-17T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/weekly-tasks \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 回傳所有每週任務，包含班級和課程名稱
+- 依 `week_start` 排序
+- `status` 可能為 "draft" 或 "published"
+
+---
+
+### POST /api/admin/weekly-tasks
+
+建立每週任務。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "classCourseIds": "array of UUID (必填，最少 1 個)",
+  "weekStart": "string (必填，ISO 8601 datetime)",
+  "weekEnd": "string (必填，ISO 8601 datetime)",
+  "status": "string (選填，'draft' 或 'published'，預設 'published')",
+  "items": [
+    {
+      "orderIndex": "number (必填，1-10)",
+      "sentenceText": "string (必填，最少 1 字元)",
+      "referenceAudioUrl": "string (選填，URL)"
+    }
+  ]
+}
+```
+
+**Zod Schema：**
+```typescript
+const weeklyTaskSchema = z.object({
+  classCourseIds: z.array(z.string().uuid()).min(1),
+  weekStart: z.string().datetime(),
+  weekEnd: z.string().datetime(),
+  status: z.enum(["draft", "published"]).default("published"),
+  items: z.array(
+    z.object({
+      orderIndex: z.number().int().min(1).max(10),
+      sentenceText: z.string().min(1),
+      referenceAudioUrl: z.string().url().optional(),
+    })
+  ).length(10),
+});
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": [
+    {
+      "id": "uuid",
+      "class_course_id": "uuid",
+      "week_start": "2026-02-17T00:00:00.000Z",
+      "week_end": "2026-02-23T23:59:59.000Z",
+      "status": "published",
+      "created_by_admin": "uuid"
+    }
+  ]
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "items": ["Array must contain exactly 10 element(s)"]
+      }
+    }
+  }
+}
+```
+
+班級課程不存在（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Class course not found",
+    "details": {
+      "classCourseId": "uuid"
+    }
+  }
+}
+```
+
+任務已存在（409）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Weekly task already exists",
+    "details": {
+      "classCourseId": "uuid",
+      "weekStart": "2026-02-17T00:00:00.000Z"
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/admin/weekly-tasks \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "classCourseIds": ["..."],
+    "weekStart": "2026-02-17T00:00:00.000Z",
+    "weekEnd": "2026-02-23T23:59:59.000Z",
+    "status": "published",
+    "items": [
+      {"orderIndex": 1, "sentenceText": "Hello, how are you?"},
+      {"orderIndex": 2, "sentenceText": "I am fine, thank you."},
+      ...
+    ]
+  }'
+```
+
+**注意事項：**
+- 必須提供正好 10 個 items（`orderIndex` 1-10）
+- 可為多個 `classCourseIds` 批次建立相同任務
+- 如未提供 `referenceAudioUrl`，會自動呼叫 AI TTS 生成參考音訊
+- 不可為同一 `classCourseId` 和 `weekStart` 建立重複任務
+- `createdByAdmin` 會自動填入當前登入的管理員 ID
+
+---
+
+### GET /api/admin/weekly-tasks/:id
+
+取得指定每週任務詳細資訊。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "task": {
+      "id": "uuid",
+      "class_course_id": "uuid",
+      "week_start": "2026-02-17T00:00:00.000Z",
+      "week_end": "2026-02-23T23:59:59.000Z",
+      "status": "published",
+      "created_by_admin": "uuid"
+    },
+    "items": [
+      {
+        "id": "uuid",
+        "order_index": 1,
+        "sentence_text": "Hello, how are you?",
+        "reference_audio_url": "https://...",
+        "reference_audio_status": "ready"
+      }
+    ]
+  }
+}
+```
+
+**錯誤回應：**
+
+任務不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Weekly task not found",
+    "details": {
+      "id": "uuid"
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/weekly-tasks/{id} \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 回傳任務基本資訊和所有 task items
+- `items` 依 `order_index` 排序
+- `reference_audio_status` 可能為 "ready", "pending", 或 "failed"
+
+---
+
+### GET /api/admin/scoring-config
+
+取得評分設定。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "config": {
+      "oneStarMax": 70,
+      "twoStarMax": 84
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/admin/scoring-config \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 如資料庫無設定，回傳預設值：`{ oneStarMax: 70, twoStarMax: 84 }`
+- 評分邏輯：
+  - 分數 ≤ oneStarMax → 1 星
+  - oneStarMax < 分數 ≤ twoStarMax → 2 星
+  - 分數 > twoStarMax → 3 星
+
+---
+
+### PUT /api/admin/scoring-config
+
+更新評分設定。
+
+**認證要求：** Admin
+
+**請求格式：**
+
+```json
+{
+  "oneStarMax": "number (必填，1-99)",
+  "twoStarMax": "number (必填，1-99)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const scoringConfigSchema = z.object({
+  oneStarMax: z.number().int().min(1).max(99),
+  twoStarMax: z.number().int().min(1).max(99),
+});
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "scoring_thresholds": {
+      "oneStarMax": 75,
+      "twoStarMax": 88
+    },
+    "created_at": "2026-02-20T08:00:00.000Z"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "oneStarMax": ["Number must be less than or equal to 99"],
+        "twoStarMax": ["Number must be greater than or equal to 1"]
+      }
+    }
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X PUT http://localhost:3000/api/admin/scoring-config \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"oneStarMax":75,"twoStarMax":88}'
+```
+
+**注意事項：**
+- 如資料庫已有設定，會更新現有記錄
+- 如資料庫無設定，會建立新記錄
+- 建議 `oneStarMax < twoStarMax` 以確保邏輯正確
+
+---
+
 ## API 端點概覽
 
 ### 認證端點
