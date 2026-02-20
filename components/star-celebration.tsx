@@ -11,9 +11,8 @@ type Props = {
 const NOTES: Record<number, number> = { 1: 523.25, 2: 659.25, 3: 783.99 }; // C5, E5, G5
 const STAR_DELAY = 600; // ms between each star
 
-function playNote(freq: number) {
+function playNote(ctx: AudioContext, freq: number) {
   try {
-    const ctx = new AudioContext();
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     gain.gain.setValueAtTime(0.3, ctx.currentTime);
@@ -38,8 +37,6 @@ function playNote(freq: number) {
     osc2.connect(gain2);
     osc2.start();
     osc2.stop(ctx.currentTime + 0.8);
-
-    setTimeout(() => ctx.close(), 1200);
   } catch {
     // Web Audio not supported — silent fallback
   }
@@ -60,6 +57,7 @@ export function StarCelebration({ stars, onClose }: Props) {
   const [visibleStars, setVisibleStars] = useState(0);
   const [showMessage, setShowMessage] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const close = useCallback(() => {
     clearTimeout(timerRef.current);
@@ -67,11 +65,20 @@ export function StarCelebration({ stars, onClose }: Props) {
   }, [onClose]);
 
   useEffect(() => {
+    // Create shared AudioContext instance
+    try {
+      audioCtxRef.current = new AudioContext();
+    } catch {
+      // Web Audio not supported
+    }
+
     let count = 0;
     const reveal = () => {
       count++;
       setVisibleStars(count);
-      playNote(NOTES[count]);
+      if (audioCtxRef.current) {
+        playNote(audioCtxRef.current, NOTES[count]);
+      }
       if (count < stars) {
         timerRef.current = setTimeout(reveal, STAR_DELAY);
       } else {
@@ -81,7 +88,13 @@ export function StarCelebration({ stars, onClose }: Props) {
       }
     };
     timerRef.current = setTimeout(reveal, 300);
-    return () => clearTimeout(timerRef.current);
+    return () => {
+      clearTimeout(timerRef.current);
+      // Clean up AudioContext
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+      }
+    };
   }, [stars, close]);
 
   return (
