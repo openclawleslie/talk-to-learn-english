@@ -2,6 +2,15 @@ import { test, expect } from '@playwright/test';
 
 test.describe('评分流程测试', () => {
   test.describe('API 评分测试', () => {
+    test.beforeEach(async ({ page }) => {
+      // 管理员登录以获取认证会话
+      await page.goto('/admin/login');
+      await page.fill('#username', process.env.ADMIN_USERNAME || 'admin');
+      await page.fill('#password', process.env.ADMIN_PASSWORD || 'admin123');
+      await page.click('button[type="submit"]');
+      await page.waitForURL(/\/admin/, { timeout: 10000 });
+    });
+
     test('TC-SCORE-003: AI 评分 API 返回正确格式', async ({ request }) => {
       const response = await request.post('/api/ai/score', {
         data: {
