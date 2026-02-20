@@ -2351,12 +2351,435 @@ curl -X GET http://localhost:3000/api/teacher/weekly-tasks \
 
 ### 家長/孩子端點
 
+所有家長/孩子端點使用權杖認證。權杖可透過 URL 路徑參數（`/api/family/link/:token`）或查詢參數（`?token=...`）傳遞。
+
 | 方法 | 路徑 | 說明 | 認證 |
 |------|------|------|------|
 | GET | `/api/family/link/:token` | 驗證權杖並取得家庭資訊 | Token |
 | GET | `/api/family/weekly-task` | 取得本週任務 | Token |
 | POST | `/api/family/submissions` | 提交錄音 | Token |
 | GET | `/api/family/performance` | 取得學生表現 | Token |
+
+---
+
+### GET /api/family/link/:token
+
+驗證家庭連結權杖並取得家庭及學生資訊。這是家長/孩子存取系統的入口端點。
+
+**認證要求：** Token（URL 路徑參數）
+
+**請求格式：**
+
+無需 request body。權杖透過 URL 路徑傳遞。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "family": {
+      "id": "uuid",
+      "parentName": "王小明家長",
+      "note": "兄妹兩人"
+    },
+    "students": [
+      {
+        "id": "uuid",
+        "name": "王小明"
+      },
+      {
+        "id": "uuid",
+        "name": "王小華"
+      }
+    ]
+  }
+}
+```
+
+**錯誤回應：**
+
+權杖無效或已作廢（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Invalid link"
+  }
+}
+```
+
+家庭不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Family not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET http://localhost:3000/api/family/link/a1b2c3d4e5f6g7h8...
+```
+
+**注意事項：**
+- 權杖必須為 `active` 狀態（非 `revoked`）
+- 權杖透過 HMAC-SHA256 驗證（使用 `FAMILY_LINK_SECRET`）
+- 此端點不會暴露 `classCourseId` 等內部資訊
+- 用於驗證連結有效性並顯示家庭成員
+- 成功回應可用於後續存取系統的身分確認
+
+---
+
+### GET /api/family/weekly-task
+
+取得當前週次的每週任務，包含任務項目、學生列表及已提交的作業。
+
+**認證要求：** Token（查詢參數）
+
+**請求格式：**
+
+查詢參數：
+- `token` (必填)：家庭連結權杖
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "task": {
+      "id": "uuid",
+      "class_course_id": "uuid",
+      "week_start": "2026-02-17T00:00:00.000Z",
+      "week_end": "2026-02-23T23:59:59.000Z",
+      "status": "published",
+      "created_by_admin": "uuid"
+    },
+    "items": [
+      {
+        "id": "uuid",
+        "weekly_task_id": "uuid",
+        "order_index": 1,
+        "sentence_text": "Hello, how are you?",
+        "reference_audio_url": "https://...",
+        "reference_audio_status": "ready"
+      }
+    ],
+    "students": [
+      {
+        "id": "uuid",
+        "name": "王小明"
+      }
+    ],
+    "submissions": [
+      {
+        "id": "uuid",
+        "studentId": "uuid",
+        "taskItemId": "uuid",
+        "score": 85,
+        "stars": 2,
+        "feedback": "發音不錯，語調可以更自然一些",
+        "audioUrl": "https://..."
+      }
+    ]
+  }
+}
+```
+
+無本週任務時（200）：
+```json
+{
+  "ok": true,
+  "data": {
+    "task": null,
+    "items": [],
+    "students": []
+  }
+}
+```
+
+**錯誤回應：**
+
+缺少權杖（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "token is required"
+  }
+}
+```
+
+權杖無效（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Invalid link"
+  }
+}
+```
+
+家庭不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Family not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET "http://localhost:3000/api/family/weekly-task?token=a1b2c3d4e5f6g7h8..."
+```
+
+**注意事項：**
+- 僅回傳當前週次（`getCurrentWeekRange()`）且狀態為 `published` 的任務
+- 任務項目依 `orderIndex` 排序（1-10）
+- `submissions` 包含該家庭所有學生的已提交作業
+- 如本週無任務，`task` 為 `null`，`items` 和 `students` 為空陣列
+- `reference_audio_status` 可能為 "ready", "pending", 或 "failed"
+- `stars` 評級：1-3 星，依據 `scoring_thresholds` 設定
+
+---
+
+### POST /api/family/submissions
+
+提交學生錄音作業。支援音訊檔案上傳、自動轉錄、AI 評分及星級評定。
+
+**認證要求：** Token（表單欄位）
+
+**Content-Type：** `multipart/form-data`
+
+**請求格式：**
+
+表單欄位：
+- `file` (必填)：音訊檔案（File）
+- `token` (必填)：家庭連結權杖（string）
+- `studentId` (必填)：學生 ID（string, UUID）
+- `taskItemId` (必填)：任務項目 ID（string, UUID）
+
+**支援音訊格式：**
+- WebM（Opus 編碼，瀏覽器錄音預設）
+- WAV（PCM 16-bit）
+- MP3
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "student_id": "uuid",
+    "task_item_id": "uuid",
+    "audio_url": "https://...",
+    "transcript": "Hello, how are you?",
+    "score": 85,
+    "stars": 2,
+    "feedback": "發音不錯，語調可以更自然一些",
+    "created_at": "2026-02-20T10:30:00.000Z"
+  }
+}
+```
+
+**錯誤回應：**
+
+缺少必填欄位（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Missing required fields"
+  }
+}
+```
+
+缺少音訊檔案（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Audio file is required"
+  }
+}
+```
+
+權杖無效（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Invalid link"
+  }
+}
+```
+
+任務項目不存在（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Task item not found"
+  }
+}
+```
+
+學生不存在或不屬於該家庭（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Student not found"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/family/submissions \
+  -F "file=@recording.webm" \
+  -F "token=a1b2c3d4e5f6g7h8..." \
+  -F "studentId=..." \
+  -F "taskItemId=..."
+```
+
+**JavaScript 範例（使用 FormData）：**
+```javascript
+const formData = new FormData();
+formData.append('file', audioBlob, 'recording.webm');
+formData.append('token', 'a1b2c3d4e5f6g7h8...');
+formData.append('studentId', '...');
+formData.append('taskItemId', '...');
+
+const response = await fetch('/api/family/submissions', {
+  method: 'POST',
+  body: formData,
+});
+```
+
+**注意事項：**
+- 使用 `multipart/form-data` 上傳音訊檔案
+- 處理流程（並行優化）：
+  1. 驗證權杖、學生、任務項目
+  2. 並行執行音訊上傳（Vercel Blob）及轉錄（ASR）
+  3. 呼叫 AI 評分（比對 `sentenceText` 與 `transcript`）
+  4. 計算星級評定（依據 `scoring_thresholds`）
+  5. 寫入資料庫（使用 `onConflictDoUpdate` 處理重複提交）
+- 如同一學生重複提交相同任務項目，會**覆蓋**舊記錄
+- `audio_url` 為 Vercel Blob 私有 URL（需簽章存取）
+- `transcript` 為 AI 轉錄的文字內容
+- `score` 為 AI 評分（0-100）
+- `stars` 為星級評定（1-3 星）
+- `feedback` 為 AI 生成的改進建議
+- 音訊檔案命名格式：`submissions/{timestamp}-recording.{ext}`
+- MIME type 會自動正規化（`normalizeMimeType()`）
+
+---
+
+### GET /api/family/performance
+
+取得家庭所有學生的整體表現統計，包含平均分數、完成率及低分項目。
+
+**認證要求：** Token（查詢參數）
+
+**請求格式：**
+
+查詢參數：
+- `token` (必填)：家庭連結權杖
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "averageScore": 78.5,
+    "completionRate": 0.85,
+    "lowScoreItems": [
+      {
+        "studentId": "uuid",
+        "taskItemId": "uuid",
+        "score": 65,
+        "feedback": "發音需要加強，特別是 'th' 音"
+      }
+    ],
+    "students": [
+      {
+        "id": "uuid",
+        "name": "王小明"
+      }
+    ],
+    "submissions": [
+      {
+        "id": "uuid",
+        "studentId": "uuid",
+        "taskItemId": "uuid",
+        "score": 85,
+        "stars": 2,
+        "feedback": "不錯，繼續加油",
+        "createdAt": "2026-02-20T10:30:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+無學生時（200）：
+```json
+{
+  "ok": true,
+  "data": {
+    "averageScore": 0,
+    "completionRate": 0,
+    "lowScoreItems": [],
+    "students": []
+  }
+}
+```
+
+**錯誤回應：**
+
+缺少權杖（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "token is required"
+  }
+}
+```
+
+權杖無效（404）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Invalid link"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X GET "http://localhost:3000/api/family/performance?token=a1b2c3d4e5f6g7h8..."
+```
+
+**注意事項：**
+- `averageScore`：該家庭所有學生的平均分數（0-100）
+- `completionRate`：完成率 = 已提交作業數 / (學生數 × 10)
+  - 假設每週固定 10 個任務項目
+  - 例：2 位學生，已提交 17 個作業 → 17 / 20 = 0.85
+- `lowScoreItems`：分數 < 70 的作業，最多回傳 20 筆
+  - 用於家長識別需要加強的項目
+  - 包含 `studentId`, `taskItemId`, `score`, `feedback`
+- `students`：該家庭所有學生列表
+- `submissions`：所有學生的所有已提交作業
+  - 包含完整的評分資訊（score, stars, feedback, audioUrl）
+- 如家庭無學生，回傳預設值（averageScore: 0, completionRate: 0）
+
+---
 
 ### AI 與音訊端點
 
