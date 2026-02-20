@@ -2,6 +2,7 @@ import { desc } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
+import { requireAnyAuth } from "@/lib/auth";
 import { scoreSpokenSentence, transcribeAudio } from "@/lib/ai";
 import { db, schema } from "@/lib/db/client";
 import { fromError, ok } from "@/lib/http";
@@ -10,6 +11,7 @@ import { scoreToStars } from "@/lib/scoring";
 const schemaBody = z.object({
   sentenceText: z.string().min(1),
   transcript: z.string().optional(),
+  token: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -17,11 +19,13 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get("content-type") || "";
     let sentenceText = "";
     let transcript = "";
+    let token: string | undefined;
 
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
       sentenceText = String(form.get("sentenceText") ?? "");
       transcript = String(form.get("transcript") ?? "");
+      token = form.get("token") as string | undefined;
       const file = form.get("file");
       if (!transcript && file instanceof File) {
         transcript = await transcribeAudio(file);
@@ -30,7 +34,10 @@ export async function POST(request: NextRequest) {
       const body = schemaBody.parse(await request.json());
       sentenceText = body.sentenceText;
       transcript = body.transcript ?? "";
+      token = body.token;
     }
+
+    await requireAnyAuth(token);
 
     const [config] = await db.select().from(schema.adminConfig).orderBy(desc(schema.adminConfig.createdAt)).limit(1);
     const result = await scoreSpokenSentence({ sentence: sentenceText, transcript });
