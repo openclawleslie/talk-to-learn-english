@@ -337,6 +337,363 @@ curl -X POST https://example.com/api/auth/admin/login \
 
 ---
 
+## 請求/回應範例
+
+本節提供常見端點的完整請求與回應範例，包含 JSON 和 multipart/form-data 兩種格式。
+
+### 範例 1：管理員登入（JSON）
+
+**端點：** `POST /api/auth/admin/login`
+
+**請求：**
+```bash
+curl -X POST http://localhost:3000/api/auth/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "mypassword"
+  }' \
+  -c cookies.txt \
+  -v
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "role": "admin"
+  }
+}
+```
+
+**回應 Headers：**
+```
+Set-Cookie: ttle_session=eyJyb2xlIjoiYWRtaW4i...;HttpOnly;Path=/;SameSite=Lax
+```
+
+**失敗回應（401）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Invalid credentials"
+  }
+}
+```
+
+---
+
+### 範例 2：建立每週任務（JSON）
+
+**端點：** `POST /api/admin/weekly-tasks`
+
+**請求：**
+```bash
+curl -X POST http://localhost:3000/api/admin/weekly-tasks \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "classCourseIds": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"],
+    "weekStart": "2026-02-17T00:00:00.000Z",
+    "weekEnd": "2026-02-23T23:59:59.000Z",
+    "status": "published",
+    "items": [
+      {"orderIndex": 1, "sentenceText": "Hello, how are you?"},
+      {"orderIndex": 2, "sentenceText": "I am fine, thank you."},
+      {"orderIndex": 3, "sentenceText": "What is your name?"},
+      {"orderIndex": 4, "sentenceText": "My name is Alice."},
+      {"orderIndex": 5, "sentenceText": "Nice to meet you."},
+      {"orderIndex": 6, "sentenceText": "How old are you?"},
+      {"orderIndex": 7, "sentenceText": "I am ten years old."},
+      {"orderIndex": 8, "sentenceText": "Where are you from?"},
+      {"orderIndex": 9, "sentenceText": "I am from Taiwan."},
+      {"orderIndex": 10, "sentenceText": "See you tomorrow."}
+    ]
+  }' \
+  -v
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": [
+    {
+      "id": "w1x2y3z4-a5b6-7890-cdef-123456789abc",
+      "class_course_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "week_start": "2026-02-17T00:00:00.000Z",
+      "week_end": "2026-02-23T23:59:59.000Z",
+      "status": "published",
+      "created_by_admin": "admin-uuid-here"
+    }
+  ]
+}
+```
+
+**失敗回應（400）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "items": ["Array must contain exactly 10 element(s)"]
+      }
+    }
+  }
+}
+```
+
+---
+
+### 範例 3：建立家庭（JSON）
+
+**端點：** `POST /api/teacher/families`
+
+**請求：**
+```bash
+curl -X POST http://localhost:3000/api/teacher/families \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "parentName": "李大華家長",
+    "note": "兄妹兩人",
+    "classCourseId": "cc-uuid-1234-5678-90ab-cdef12345678",
+    "students": [
+      {"name": "李小明"},
+      {"name": "李小華"}
+    ]
+  }' \
+  -v
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "familyId": "fam-9876-5432-10ab-cdef87654321",
+    "token": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+  }
+}
+```
+
+**失敗回應（403）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Forbidden class/course"
+  }
+}
+```
+
+---
+
+### 範例 4：AI 評分（JSON 格式）
+
+**端點：** `POST /api/ai/score`
+
+**請求（使用預先轉錄的文字）：**
+```bash
+curl -X POST http://localhost:3000/api/ai/score \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentenceText": "Hello, how are you?",
+    "transcript": "Hello, how are you?"
+  }' \
+  -v
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "transcript": "Hello, how are you?",
+    "score": 95,
+    "feedback": "發音非常標準，語調自然流暢。繼續保持！",
+    "stars": 3
+  }
+}
+```
+
+---
+
+### 範例 5：AI 評分（Multipart 格式，包含音訊檔案）
+
+**端點：** `POST /api/ai/score`
+
+**請求（上傳音訊檔案）：**
+```bash
+curl -X POST http://localhost:3000/api/ai/score \
+  -F "sentenceText=Hello, how are you?" \
+  -F "file=@recording.webm;type=audio/webm" \
+  -v
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "transcript": "Hello how are you",
+    "score": 82,
+    "feedback": "發音不錯，但句子結尾的語調可以更自然。建議在 'you' 的發音上稍微提高音調。",
+    "stars": 2
+  }
+}
+```
+
+**失敗回應（400）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "sentenceText": ["Required"]
+      }
+    }
+  }
+}
+```
+
+---
+
+### 範例 6：提交學生錄音（Multipart）
+
+**端點：** `POST /api/family/submissions`
+
+**請求：**
+```bash
+curl -X POST http://localhost:3000/api/family/submissions \
+  -F "file=@recording.webm;type=audio/webm" \
+  -F "token=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
+  -F "studentId=stu-1234-5678-90ab-cdef12345678" \
+  -F "taskItemId=item-abcd-ef12-3456-7890-abcdef123456" \
+  -v
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "sub-9876-5432-10fe-dcba98765432",
+    "student_id": "stu-1234-5678-90ab-cdef12345678",
+    "task_item_id": "item-abcd-ef12-3456-7890-abcdef123456",
+    "audio_url": "https://abc123.blob.vercel-storage.com/submissions/1708416000000-recording.webm",
+    "transcript": "Hello, how are you?",
+    "score": 88,
+    "stars": 3,
+    "feedback": "很好！發音清晰，語調自然。繼續保持這樣的練習。",
+    "created_at": "2026-02-20T10:30:00.000Z"
+  }
+}
+```
+
+**失敗回應（404）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Task item not found"
+  }
+}
+```
+
+---
+
+### 範例 7：上傳音訊檔案（Multipart）
+
+**端點：** `POST /api/audio/upload`
+
+**請求：**
+```bash
+curl -X POST http://localhost:3000/api/audio/upload \
+  -F "file=@recording.wav;type=audio/wav" \
+  -F "folder=reference-audio" \
+  -v
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "url": "https://xyz789.blob.vercel-storage.com/reference-audio/1708416123456-recording.wav",
+    "pathname": "reference-audio/1708416123456-recording.wav",
+    "contentType": "audio/wav",
+    "contentDisposition": "attachment; filename=\"1708416123456-recording.wav\""
+  }
+}
+```
+
+**失敗回應（400）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "file is required"
+  }
+}
+```
+
+---
+
+### 範例 8：產生 TTS 音訊（JSON）
+
+**端點：** `POST /api/audio/generate-tts`
+
+**請求：**
+```bash
+curl -X POST http://localhost:3000/api/audio/generate-tts \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "text": "Hello, how are you? I am fine, thank you."
+  }' \
+  -v
+```
+
+**成功回應（201）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "audioUrl": "https://xyz789.blob.vercel-storage.com/reference-audio/tts-1708416789012.mp3"
+  }
+}
+```
+
+**失敗回應（401）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Unauthorized"
+  }
+}
+```
+
+**失敗回應（500，API Key 缺失）：**
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "API Key is missing. Please set AI_API_KEY or OPENAI_API_KEY in environment variables."
+  }
+}
+```
+
+---
+
 ## 資料驗證
 
 所有輸入資料使用 **Zod schemas** 驗證，定義於 `lib/validators.ts`。
