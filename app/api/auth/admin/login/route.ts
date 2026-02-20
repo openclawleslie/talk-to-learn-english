@@ -3,10 +3,13 @@ import { NextRequest } from "next/server";
 import { setSession } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { fromError, fail, ok } from "@/lib/http";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { adminLoginSchema } from "@/lib/validators";
 
 export async function POST(request: NextRequest) {
   try {
+    checkRateLimit(request);
+
     const payload = adminLoginSchema.parse(await request.json());
 
     if (payload.username !== env.ADMIN_USERNAME || payload.password !== env.ADMIN_PASSWORD) {
