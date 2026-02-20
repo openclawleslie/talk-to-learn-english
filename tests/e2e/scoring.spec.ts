@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+  throw new Error('ADMIN_USERNAME and ADMIN_PASSWORD environment variables must be set for E2E tests');
+}
+
 test.describe('评分流程测试', () => {
   test.describe('API 评分测试', () => {
     test('TC-SCORE-003: AI 评分 API 返回正确格式', async ({ request }) => {
@@ -49,8 +56,8 @@ test.describe('评分流程测试', () => {
     test.beforeEach(async ({ page }) => {
       // 管理员登录
       await page.goto('/admin/login');
-      await page.fill('#username', process.env.ADMIN_USERNAME || 'admin');
-      await page.fill('#password', process.env.ADMIN_PASSWORD || 'admin123');
+      await page.fill('#username', ADMIN_USERNAME);
+      await page.fill('#password', ADMIN_PASSWORD);
       await page.click('button[type="submit"]');
       await page.waitForURL(/\/admin/, { timeout: 10000 });
     });

@@ -4,8 +4,8 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   ADMIN_USERNAME: z.string().default("admin"),
-  ADMIN_PASSWORD: z.string().default("admin123"),
-  SESSION_SECRET: z.string().default("dev-session-secret"),
+  ADMIN_PASSWORD: z.string().min(1),
+  SESSION_SECRET: z.string().min(1),
   DEFAULT_TZ: z.string().default("Asia/Shanghai"),
   AI_BASE_URL: z.string().url().optional(),
   AI_API_KEY: z.string().optional(),
