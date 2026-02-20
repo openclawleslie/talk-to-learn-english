@@ -5,10 +5,13 @@ import { NextRequest } from "next/server";
 import { setSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
 import { fromError, fail, ok } from "@/lib/http";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { teacherLoginSchema } from "@/lib/validators";
 
 export async function POST(request: NextRequest) {
   try {
+    checkRateLimit(request);
+
     const payload = teacherLoginSchema.parse(await request.json());
 
     const [teacher] = await db
