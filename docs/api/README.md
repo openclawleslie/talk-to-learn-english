@@ -381,6 +381,228 @@ const createFamilySchema = z.object({
 
 ---
 
+## 認證端點
+
+### POST /api/auth/admin/login
+
+管理員登入端點。驗證憑證後建立 session cookie。
+
+**請求格式：**
+
+```json
+{
+  "username": "string (必填，最少 1 字元)",
+  "password": "string (必填，最少 1 字元)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const adminLoginSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+});
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "role": "admin"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "username": ["Required"],
+        "password": ["Required"]
+      }
+    }
+  }
+}
+```
+
+憑證錯誤（401）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Invalid credentials"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/auth/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"mypassword"}' \
+  -c cookies.txt
+```
+
+**注意事項：**
+- 成功登入後會設定 `ttle_session` cookie（有效期 24 小時）
+- 憑證從環境變數 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 讀取
+- 後續請求需攜帶此 cookie 以維持認證狀態
+
+---
+
+### POST /api/auth/admin/logout
+
+管理員登出端點。清除 session cookie 並重新導向至首頁。
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（303）：**
+
+重新導向至 `/`
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/auth/admin/logout \
+  -b cookies.txt \
+  -L
+```
+
+**注意事項：**
+- 必須已登入（攜帶有效 session cookie）
+- 登出後 session cookie 會被清除
+- 自動重新導向至首頁（HTTP 303）
+
+---
+
+### POST /api/auth/teacher/login
+
+老師登入端點。驗證憑證後建立 session cookie。
+
+**請求格式：**
+
+```json
+{
+  "email": "string (必填，email 格式)",
+  "password": "string (必填，最少 1 字元)"
+}
+```
+
+**Zod Schema：**
+```typescript
+const teacherLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+```
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "role": "teacher",
+    "teacherId": "uuid"
+  }
+}
+```
+
+或（當老師同時是管理員時）：
+```json
+{
+  "ok": true,
+  "data": {
+    "role": "admin",
+    "teacherId": "uuid"
+  }
+}
+```
+
+**錯誤回應：**
+
+驗證失敗（400）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Validation failed",
+    "details": {
+      "formErrors": [],
+      "fieldErrors": {
+        "email": ["Invalid email"],
+        "password": ["Required"]
+      }
+    }
+  }
+}
+```
+
+憑證錯誤或帳號停用（401）：
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Invalid credentials"
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/auth/teacher/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"teacher@example.com","password":"mypassword"}' \
+  -c cookies.txt
+```
+
+**注意事項：**
+- 成功登入後會設定 `ttle_session` cookie（有效期 24 小時）
+- 密碼使用 bcrypt 進行雜湊比對
+- 帳號必須處於啟用狀態（`isActive = true`）
+- 若老師同時是管理員（`isAdmin = true`），role 會是 "admin"
+- `teacherId` 用於後續 API 請求的權限檢查
+
+---
+
+### POST /api/auth/teacher/logout
+
+老師登出端點。清除 session cookie。
+
+**請求格式：**
+
+無需 request body。
+
+**成功回應（200）：**
+```json
+{
+  "ok": true,
+  "data": {
+    "success": true
+  }
+}
+```
+
+**範例請求：**
+```bash
+curl -X POST http://localhost:3000/api/auth/teacher/logout \
+  -b cookies.txt
+```
+
+**注意事項：**
+- 必須已登入（攜帶有效 session cookie）
+- 登出後 session cookie 會被清除
+
+---
+
 ## API 端點概覽
 
 ### 認證端點
