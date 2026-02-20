@@ -19,7 +19,7 @@ export default function TeacherLayout({
   const navItems = [
     { href: "/teacher/dashboard", label: "工作台", icon: Home },
     { href: "/teacher/families", label: "家庭管理", icon: Users },
-    { href: "/teacher/weekly-tasks", label: "每週任務", icon: Calendar },
+    { href: "/teacher/weekly-tasks", label: "每周任务", icon: Calendar },
   ];
 
   return (

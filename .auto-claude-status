@@ -1,0 +1,25 @@
+{
+  "active": true,
+  "spec": "003-make-teacher-navigation-mobile-responsive",
+  "state": "building",
+  "subtasks": {
+    "completed": 2,
+    "total": 3,
+    "in_progress": 1,
+    "failed": 0
+  },
+  "phase": {
+    "current": "Mobile-Responsive Navigation",
+    "id": null,
+    "total": 3
+  },
+  "workers": {
+    "active": 0,
+    "max": 1
+  },
+  "session": {
+    "number": 4,
+    "started_at": "2026-02-20T17:55:37.905742"
+  },
+  "last_update": "2026-02-20T18:06:49.162139"
+}
