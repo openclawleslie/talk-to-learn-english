@@ -14,6 +14,8 @@ const envSchema = z.object({
   AI_TRANSCRIBE_MODEL: z.string().default("gpt-4o-mini-transcribe"),
   AI_TTS_MODEL: z.string().default("gpt-4o-mini-tts"),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().default(5),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
 });
 
 export const env = envSchema.parse({
@@ -29,4 +31,6 @@ export const env = envSchema.parse({
   AI_TRANSCRIBE_MODEL: process.env.AI_TRANSCRIBE_MODEL,
   AI_TTS_MODEL: process.env.AI_TTS_MODEL,
   BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+  RATE_LIMIT_MAX_ATTEMPTS: process.env.RATE_LIMIT_MAX_ATTEMPTS,
+  RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS,
 });
