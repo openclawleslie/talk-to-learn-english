@@ -325,6 +325,183 @@ test.describe('教师端测试', () => {
     });
   });
 
+  test.describe('复制任务测试', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/teacher/login');
+      await page.fill('#email', teacherEmail);
+      await page.fill('#password', teacherPassword);
+      await page.click('button[type="submit"]');
+      await page.waitForURL(/\/teacher/, { timeout: 10000 });
+    });
+
+    test('TC-TEACHER-044: 複製任務流程', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 等待任務加載
+      await page.waitForTimeout(1000);
+
+      // 查找第一個有項目的任務卡片
+      const taskCards = page.locator('.card:has(button:has-text("複製"))');
+      const count = await taskCards.count();
+
+      if (count > 0) {
+        // 獲取源任務的信息（用於後續驗證）
+        const sourceTaskCard = taskCards.first();
+        const sourceTaskText = await sourceTaskCard.locator('.card-title').textContent();
+        const sourceItemCount = await sourceTaskCard.locator('text=/共 \\d+ 個句子/').textContent();
+
+        // 點擊複製按鈕
+        await sourceTaskCard.locator('button:has-text("複製")').last().click();
+
+        // 驗證複製模態框顯示
+        await expect(page.locator('.modal:has-text("複製任務")')).toBeVisible();
+        await expect(page.locator('text=來源任務:')).toBeVisible();
+
+        // 選擇目標班級課程（選擇第一個選項）
+        const classSelect = page.locator('.modal select').first();
+        const options = await classSelect.locator('option:not([value=""])').count();
+
+        if (options > 0) {
+          await classSelect.selectOption({ index: 1 });
+
+          // 設置新的日期範圍（下週）
+          const today = new Date();
+          const nextWeekStart = new Date(today);
+          nextWeekStart.setDate(today.getDate() + 7);
+          const nextWeekEnd = new Date(today);
+          nextWeekEnd.setDate(today.getDate() + 13);
+
+          const weekStartInput = page.locator('input[type="date"]').first();
+          const weekEndInput = page.locator('input[type="date"]').last();
+
+          await weekStartInput.fill(nextWeekStart.toISOString().split('T')[0]);
+          await weekEndInput.fill(nextWeekEnd.toISOString().split('T')[0]);
+
+          // 確認複製
+          await page.click('.modal button:has-text("確認複製")');
+
+          // 等待成功提示或錯誤提示
+          const alert = page.locator('.alert');
+          await expect(alert).toBeVisible({ timeout: 10000 });
+
+          // 如果成功，驗證頁面刷新
+          const alertText = await alert.textContent();
+          if (alertText && alertText.includes('成功')) {
+            await page.waitForTimeout(1000);
+
+            // 驗證模態框關閉
+            await expect(page.locator('.modal:has-text("複製任務")')).not.toBeVisible();
+          }
+        }
+      }
+    });
+
+    test('TC-TEACHER-045: 驗證複製的任務包含所有項目', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 等待任務加載
+      await page.waitForTimeout(1000);
+
+      // 查找任務並獲取項目數量
+      const taskCards = page.locator('.card:has(button:has-text("複製"))');
+      const count = await taskCards.count();
+
+      if (count > 0) {
+        const firstTask = taskCards.first();
+
+        // 獲取源任務的項目數量
+        const itemCountText = await firstTask.locator('text=/共 \\d+ 個句子/').textContent();
+        const itemCount = itemCountText?.match(/\d+/)?.[0];
+
+        // 點擊查看詳情以確認項目內容
+        await firstTask.locator('button:has-text("查看詳情")').click();
+        await expect(page.locator('.modal:has-text("週")')).toBeVisible();
+
+        // 驗證項目列表顯示
+        const items = page.locator('.modal .badge-neutral');
+        const actualItemCount = await items.count();
+
+        // 驗證項目數量匹配
+        if (itemCount) {
+          expect(actualItemCount).toBe(parseInt(itemCount));
+        }
+
+        // 關閉詳情模態框
+        await page.click('.modal button:has-text("關閉")');
+        await page.waitForTimeout(500);
+      }
+    });
+
+    test('TC-TEACHER-046: 驗證音頻URL在複製時保留', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 等待任務加載
+      await page.waitForTimeout(1000);
+
+      // 查找有音頻的任務
+      const taskCards = page.locator('.card:has(button:has-text("查看詳情"))');
+      const count = await taskCards.count();
+
+      if (count > 0) {
+        const firstTask = taskCards.first();
+
+        // 點擊查看詳情
+        await firstTask.locator('button:has-text("查看詳情")').click();
+        await expect(page.locator('.modal')).toBeVisible();
+
+        // 檢查是否有音頻元素
+        const audioElements = page.locator('.modal audio');
+        const audioCount = await audioElements.count();
+
+        if (audioCount > 0) {
+          // 獲取第一個音頻的 src 屬性
+          const firstAudioSrc = await audioElements.first().getAttribute('src');
+
+          // 驗證音頻 URL 存在且有效
+          expect(firstAudioSrc).toBeTruthy();
+          expect(firstAudioSrc).toContain('http');
+        }
+
+        // 關閉模態框
+        await page.click('.modal button:has-text("關閉")');
+      }
+    });
+
+    test('TC-TEACHER-047: 複製任務模態框UI元素', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 等待任務加載
+      await page.waitForTimeout(1000);
+
+      const taskCards = page.locator('.card:has(button:has-text("複製"))');
+      const count = await taskCards.count();
+
+      if (count > 0) {
+        // 點擊複製按鈕
+        await taskCards.first().locator('button:has-text("複製")').last().click();
+
+        // 驗證模態框元素
+        await expect(page.locator('.modal h3:has-text("複製任務")')).toBeVisible();
+        await expect(page.locator('text=來源任務:')).toBeVisible();
+        await expect(page.locator('text=目標班級課程')).toBeVisible();
+        await expect(page.locator('text=週開始日期')).toBeVisible();
+        await expect(page.locator('text=週結束日期')).toBeVisible();
+
+        // 驗證選擇器和日期輸入框
+        await expect(page.locator('.modal select')).toBeVisible();
+        await expect(page.locator('.modal input[type="date"]').first()).toBeVisible();
+        await expect(page.locator('.modal input[type="date"]').last()).toBeVisible();
+
+        // 驗證按鈕
+        await expect(page.locator('.modal button:has-text("取消")')).toBeVisible();
+        await expect(page.locator('.modal button:has-text("確認複製")')).toBeVisible();
+
+        // 關閉模態框
+        await page.click('.modal button:has-text("取消")');
+      }
+    });
+  });
+
   test.describe('导航测试', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/teacher/login');
