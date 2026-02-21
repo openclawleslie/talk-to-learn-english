@@ -166,3 +166,24 @@ export const submissions = pgTable(
   },
   (t) => [uniqueIndex("submission_student_task_unique").on(t.studentId, t.taskItemId)],
 );
+
+export const curriculumTags = pgTable("curriculum_tags", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: text("description").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const taskItemTags = pgTable(
+  "task_item_tags",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskItemId: uuid("task_item_id")
+      .notNull()
+      .references(() => taskItems.id, { onDelete: "cascade" }),
+    curriculumTagId: uuid("curriculum_tag_id")
+      .notNull()
+      .references(() => curriculumTags.id, { onDelete: "cascade" }),
+  },
+  (t) => [uniqueIndex("task_item_tag_unique").on(t.taskItemId, t.curriculumTagId)],
+);
