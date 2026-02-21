@@ -14,6 +14,7 @@ import {
 export const familyLinkStatusEnum = pgEnum("family_link_status", ["active", "revoked"]);
 export const weeklyTaskStatusEnum = pgEnum("weekly_task_status", ["draft", "published"]);
 export const audioStatusEnum = pgEnum("reference_audio_status", ["pending", "ready", "failed"]);
+export const notificationPreferenceEnum = pgEnum("notification_preference", ["all", "weekly_summary", "none"]);
 
 export const teachers = pgTable(
   "teachers",
@@ -80,6 +81,8 @@ export const teacherAssignments = pgTable(
 export const families = pgTable("families", {
   id: uuid("id").defaultRandom().primaryKey(),
   parentName: varchar("parent_name", { length: 120 }).notNull(),
+  parentEmail: varchar("parent_email", { length: 255 }),
+  notificationPreference: notificationPreferenceEnum("notification_preference").notNull().default("all"),
   note: text("note").notNull().default(""),
   classCourseId: uuid("class_course_id")
     .notNull()
