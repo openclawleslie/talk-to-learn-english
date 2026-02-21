@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       transcript,
       score: result.score,
       feedback: result.feedback,
+      detailedFeedback: result.detailedFeedback,
       stars,
     });
   } catch (error) {
