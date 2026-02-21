@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronLeft, Pause, Mic, Square, Star, Volume2, Check, RotateCcw } from "lucide-react";
 import type { FamilyData } from "./page";
 import { StarCelebration } from "@/components/star-celebration";
+import { PronunciationFeedback } from "@/components/pronunciation-feedback";
+import type { DetailedFeedback } from "@/lib/types/pronunciation";
 
 import {
   chooseSupportedRecorderMimeType,
@@ -26,7 +28,7 @@ type PracticeState = "idle" | "playing" | "recording" | "submitting" | "complete
 export function StudentPractice({ data, student, token, onBack, onRefresh }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [state, setState] = useState<PracticeState>("idle");
-  const [lastResult, setLastResult] = useState<{ score: number; stars: number; feedback: string } | null>(null);
+  const [lastResult, setLastResult] = useState<{ score: number; stars: number; feedback: string; detailedFeedback: DetailedFeedback | null } | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showNext, setShowNext] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -166,6 +168,7 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
         score: json.data.score,
         stars: json.data.stars,
         feedback: json.data.feedback,
+        detailedFeedback: json.data.detailedFeedback || null,
       });
       setState("completed");
       setAudioBlob(null);
@@ -327,14 +330,26 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
           </div>
         </div>
 
+        {/* Detailed Feedback Display */}
+        {(state === "completed" || (existingSubmission && !isRetrying)) && (lastResult?.detailedFeedback || existingSubmission?.detailedFeedback) && (
+          <div className="mt-6">
+            <PronunciationFeedback
+              feedback={(lastResult?.detailedFeedback || existingSubmission?.detailedFeedback)!}
+              referenceSentence={currentItem.sentenceText}
+            />
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="mt-6 flex flex-col items-center gap-4">
           {(state === "completed" || (existingSubmission && !isRetrying)) ? (
             <>
               {/* Completed State */}
-              <div className="text-center text-sm text-base-content/60 mb-2">
-                {lastResult?.feedback || existingSubmission?.feedback || "完成得很好！"}
-              </div>
+              {!lastResult?.detailedFeedback && !existingSubmission?.detailedFeedback && (
+                <div className="text-center text-sm text-base-content/60 mb-2">
+                  {lastResult?.feedback || existingSubmission?.feedback || "完成得很好！"}
+                </div>
+              )}
               {lastResult && (
                 <div className="text-center text-lg font-bold text-primary mb-2">
                   {lastResult.score} 分
