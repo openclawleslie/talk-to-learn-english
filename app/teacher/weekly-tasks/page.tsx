@@ -22,18 +22,43 @@ interface WeeklyTask {
   items: TaskItem[];
 }
 
+interface ClassCourse {
+  id: string;
+  class_id: string;
+  course_id: string;
+  class_name: string | null;
+  course_name: string | null;
+}
+
 export default function TeacherWeeklyTasksPage() {
   const [weeklyTasks, setWeeklyTasks] = useState<WeeklyTask[]>([]);
+  const [classCourses, setClassCourses] = useState<ClassCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<WeeklyTask | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [taskToDuplicate, setTaskToDuplicate] = useState<WeeklyTask | null>(null);
+  const [targetClassCourseId, setTargetClassCourseId] = useState("");
+  const [duplicateWeekStart, setDuplicateWeekStart] = useState(() => {
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - today.getDay() + 1);
+    return monday.toISOString().split("T")[0];
+  });
+  const [duplicateWeekEnd, setDuplicateWeekEnd] = useState(() => {
+    const today = new Date();
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - today.getDay() + 7);
+    return sunday.toISOString().split("T")[0];
+  });
 
   useEffect(() => {
     fetchWeeklyTasks();
+    fetchClassCourses();
   }, []);
 
   const fetchWeeklyTasks = async () => {
@@ -48,6 +73,18 @@ export default function TeacherWeeklyTasksPage() {
       console.error("Failed to fetch weekly tasks:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchClassCourses = async () => {
+    try {
+      const response = await fetch("/api/teacher/class-courses");
+      if (response.ok) {
+        const data = await response.json();
+        setClassCourses(data.data?.classCourses || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch class courses:", error);
     }
   };
 
@@ -149,6 +186,54 @@ export default function TeacherWeeklyTasksPage() {
   const handleBulkDuplicate = async () => {
     // TODO: Implement bulk duplicate API call
     alert(`複製 ${selectedTaskIds.length} 個任務 (功能開發中)`);
+  };
+
+  const handleDuplicateTask = (task: WeeklyTask) => {
+    setTaskToDuplicate(task);
+    setTargetClassCourseId(task.classCourseId);
+    setShowDuplicateModal(true);
+    setMessage("");
+  };
+
+  const confirmDuplicate = async () => {
+    if (!taskToDuplicate) return;
+
+    if (!targetClassCourseId) {
+      setMessage("請選擇目標班級課程");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/teacher/weekly-tasks/duplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceTaskId: taskToDuplicate.id,
+          targetClassCourseId,
+          weekStart: new Date(duplicateWeekStart).toISOString(),
+          weekEnd: new Date(duplicateWeekEnd).toISOString(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage("任務複製成功！");
+        setShowDuplicateModal(false);
+        setTaskToDuplicate(null);
+        setTargetClassCourseId("");
+        fetchWeeklyTasks();
+      } else {
+        setMessage(typeof data.error === 'string' ? data.error : data.error?.message || "複製失敗");
+      }
+    } catch (error) {
+      setMessage("網路錯誤，請重試");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -278,12 +363,21 @@ export default function TeacherWeeklyTasksPage() {
                     共 {task.items.length} 個句子
                   </div>
 
-                  <button
-                    className="btn btn-outline btn-sm"
-                    onClick={() => setSelectedTask(task)}
-                  >
-                    查看詳情
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      className="btn btn-outline btn-sm flex-1"
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      查看詳情
+                    </button>
+                    <button
+                      className="btn btn-outline btn-sm gap-1"
+                      onClick={() => handleDuplicateTask(task)}
+                    >
+                      <Copy className="h-4 w-4" />
+                      複製
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -448,6 +542,111 @@ export default function TeacherWeeklyTasksPage() {
             <button
               onClick={() => {
                 setShowUnpublishModal(false);
+                setMessage("");
+              }}
+              disabled={isSubmitting}
+            >
+              close
+            </button>
+          </form>
+        </dialog>
+      )}
+
+      {/* Duplicate Task Modal */}
+      {showDuplicateModal && taskToDuplicate && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">複製任務</h3>
+            <p className="mb-4 text-sm text-base-content/70">
+              來源任務: {taskToDuplicate.className} - {taskToDuplicate.courseName} (第{taskToDuplicate.weekNumber}週)
+            </p>
+
+            <div className="space-y-4">
+              {/* Target Class Course Selection */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">目標班級課程</span>
+                </label>
+                <select
+                  className="select select-bordered"
+                  value={targetClassCourseId}
+                  onChange={(e) => setTargetClassCourseId(e.target.value)}
+                >
+                  <option value="">請選擇班級課程</option>
+                  {classCourses.map((cc) => (
+                    <option key={cc.id} value={cc.id}>
+                      {cc.class_name} - {cc.course_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Week Start Date */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">週開始日期</span>
+                </label>
+                <input
+                  type="date"
+                  className="input input-bordered"
+                  value={duplicateWeekStart}
+                  onChange={(e) => setDuplicateWeekStart(e.target.value)}
+                />
+              </div>
+
+              {/* Week End Date */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">週結束日期</span>
+                </label>
+                <input
+                  type="date"
+                  className="input input-bordered"
+                  value={duplicateWeekEnd}
+                  onChange={(e) => setDuplicateWeekEnd(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {message && (
+              <div className={`alert ${message.includes("成功") ? "alert-success" : "alert-error"} mt-4`}>
+                {message}
+              </div>
+            )}
+
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowDuplicateModal(false);
+                  setTaskToDuplicate(null);
+                  setMessage("");
+                }}
+                disabled={isSubmitting}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={confirmDuplicate}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm" />
+                    複製中...
+                  </>
+                ) : (
+                  "確認複製"
+                )}
+              </button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button
+              onClick={() => {
+                setShowDuplicateModal(false);
+                setTaskToDuplicate(null);
                 setMessage("");
               }}
               disabled={isSubmitting}
