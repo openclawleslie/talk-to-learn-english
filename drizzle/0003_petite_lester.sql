@@ -1,0 +1,1 @@
+ALTER TABLE "weekly_tasks" ADD COLUMN "deadline" timestamp with time zone NOT NULL;
