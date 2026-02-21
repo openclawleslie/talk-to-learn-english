@@ -74,7 +74,7 @@ function ReportContent() {
   const handleExportPdf = async () => {
     try {
       setIsExportingPdf(true);
-      const response = await fetch(`/api/family/export/pdf?token=${encodeURIComponent(token)}`);
+      const response = await fetch(`/api/family/report/export-pdf?token=${encodeURIComponent(token)}`);
       if (!response.ok) {
         throw new Error("匯出失敗");
       }
@@ -97,7 +97,7 @@ function ReportContent() {
   const handleExportExcel = async () => {
     try {
       setIsExportingExcel(true);
-      const response = await fetch(`/api/family/export/excel?token=${encodeURIComponent(token)}`);
+      const response = await fetch(`/api/family/report/export-excel?token=${encodeURIComponent(token)}`);
       if (!response.ok) {
         throw new Error("匯出失敗");
       }

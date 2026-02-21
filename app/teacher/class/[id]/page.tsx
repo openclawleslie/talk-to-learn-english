@@ -68,7 +68,7 @@ export default function TeacherClassPage({
   const handleExportPdf = async () => {
     try {
       setIsExportingPdf(true);
-      const response = await fetch(`/api/teacher/classes/${id}/export/pdf`);
+      const response = await fetch(`/api/teacher/classes/${id}/export-pdf`);
       if (!response.ok) {
         throw new Error("匯出失敗");
       }
@@ -91,7 +91,7 @@ export default function TeacherClassPage({
   const handleExportExcel = async () => {
     try {
       setIsExportingExcel(true);
-      const response = await fetch(`/api/teacher/classes/${id}/export/excel`);
+      const response = await fetch(`/api/teacher/classes/${id}/export-excel`);
       if (!response.ok) {
         throw new Error("匯出失敗");
       }

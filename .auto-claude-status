@@ -3,23 +3,23 @@
   "spec": "023-progress-report-export",
   "state": "building",
   "subtasks": {
-    "completed": 4,
+    "completed": 7,
     "total": 8,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Family Export APIs",
+    "current": "End-to-End Verification",
     "id": null,
-    "total": 2
+    "total": 1
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 6,
+    "number": 9,
     "started_at": "2026-02-21T23:11:16.666234"
   },
-  "last_update": "2026-02-21T23:25:04.148007"
+  "last_update": "2026-02-21T23:30:26.460912"
 }
