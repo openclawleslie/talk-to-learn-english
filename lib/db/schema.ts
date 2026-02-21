@@ -15,6 +15,7 @@ export const familyLinkStatusEnum = pgEnum("family_link_status", ["active", "rev
 export const weeklyTaskStatusEnum = pgEnum("weekly_task_status", ["draft", "published"]);
 export const audioStatusEnum = pgEnum("reference_audio_status", ["pending", "ready", "failed"]);
 export const notificationPreferenceEnum = pgEnum("notification_preference", ["all", "weekly_summary", "none"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["practice_complete", "weekly_summary"]);
 
 export const teachers = pgTable(
   "teachers",
@@ -169,3 +170,14 @@ export const submissions = pgTable(
   },
   (t) => [uniqueIndex("submission_student_task_unique").on(t.studentId, t.taskItemId)],
 );
+
+export const notificationLogs = pgTable("notification_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  familyId: uuid("family_id")
+    .notNull()
+    .references(() => families.id, { onDelete: "cascade" }),
+  notificationType: notificationTypeEnum("notification_type").notNull(),
+  sentTo: varchar("sent_to", { length: 255 }).notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+});
