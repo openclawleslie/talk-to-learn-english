@@ -205,3 +205,22 @@ export const createSubmissionSchema = z.object({
   audioUrl: z.string().url(),
   transcript: z.string().optional(),
 });
+
+/**
+ * Validation schema for updating family notification preferences.
+ *
+ * Allows families to opt-in or opt-out of email notifications for new weekly tasks.
+ * Requires a family link token for authentication and an emailEnabled boolean flag.
+ *
+ * @example
+ * ```ts
+ * const input = updateNotificationPreferencesSchema.parse({
+ *   token: "xK9mP2vQ7wR4yT6uZ8aB3cD5fG1hJ0kL",
+ *   emailEnabled: false  // Opt-out of email notifications
+ * });
+ * ```
+ */
+export const updateNotificationPreferencesSchema = z.object({
+  token: z.string().min(8),
+  emailEnabled: z.boolean(),
+});
