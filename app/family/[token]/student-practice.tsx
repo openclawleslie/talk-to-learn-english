@@ -33,12 +33,14 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
   const [isRetrying, setIsRetrying] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  const studentAudioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recorderMimeTypeRef = useRef("");
   const recorderExtRef = useRef("webm");
   const hasInitializedRef = useRef(false);
   const dingAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingAudio, setPlayingAudio] = useState<"reference" | "student" | null>(null);
 
   const currentItem = data.items[currentIndex];
   const existingSubmission = useMemo(
@@ -69,13 +71,40 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
 
   async function playReference() {
     if (!currentItem?.referenceAudioUrl || !audioRef.current) return;
+    // Stop student audio if playing
+    if (studentAudioRef.current) {
+      studentAudioRef.current.pause();
+      studentAudioRef.current.currentTime = 0;
+    }
     setState("playing");
+    setPlayingAudio("reference");
     audioRef.current.src = currentItem.referenceAudioUrl;
     audioRef.current.play();
   }
 
+  async function playStudentRecording() {
+    if (!studentAudioRef.current) return;
+    const audioUrl = existingSubmission?.audioUrl;
+    if (!audioUrl) return;
+
+    // Stop reference audio if playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    setPlayingAudio("student");
+    studentAudioRef.current.src = audioUrl;
+    studentAudioRef.current.play();
+  }
+
   function handleAudioEnded() {
     setState("idle");
+    setPlayingAudio(null);
+  }
+
+  function handleStudentAudioEnded() {
+    setPlayingAudio(null);
   }
 
   async function startRecording() {
@@ -237,8 +266,9 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Hidden audio element */}
+      {/* Hidden audio elements */}
       <audio ref={audioRef} onEnded={handleAudioEnded} className="hidden" />
+      <audio ref={studentAudioRef} onEnded={handleStudentAudioEnded} className="hidden" />
 
       {/* Star celebration overlay */}
       {showCelebration && lastResult && (
@@ -340,6 +370,68 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
                   {lastResult.score} 分
                 </div>
               )}
+
+              {/* Audio Playback Section */}
+              {existingSubmission?.audioUrl && (
+                <div className="w-full max-w-md">
+                  <div className="card bg-base-200 shadow">
+                    <div className="card-body p-4">
+                      <h3 className="text-sm font-medium text-base-content/70 mb-3">播放錄音</h3>
+                      <div className={`grid gap-3 ${currentItem.referenceAudioUrl ? "grid-cols-2" : "grid-cols-1"}`}>
+                        {/* Reference Audio Player */}
+                        {currentItem.referenceAudioUrl && (
+                          <div className="flex flex-col items-center gap-2">
+                            <button
+                              onClick={playReference}
+                              disabled={playingAudio === "student"}
+                              className={`btn btn-sm w-full gap-2 ${
+                                playingAudio === "reference" ? "btn-warning" : "btn-ghost"
+                              }`}
+                            >
+                              {playingAudio === "reference" ? (
+                                <>
+                                  <Pause className="h-4 w-4" />
+                                  播放中
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 className="h-4 w-4" />
+                                  原音
+                                </>
+                              )}
+                            </button>
+                            <span className="text-xs text-base-content/60">參考發音</span>
+                          </div>
+                        )}
+                        {/* Student Recording Player */}
+                        <div className="flex flex-col items-center gap-2">
+                          <button
+                            onClick={playStudentRecording}
+                            disabled={playingAudio === "reference"}
+                            className={`btn btn-sm w-full gap-2 ${
+                              playingAudio === "student" ? "btn-info" : "btn-ghost"
+                            }`}
+                          >
+                            {playingAudio === "student" ? (
+                              <>
+                                <Pause className="h-4 w-4" />
+                                播放中
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="h-4 w-4" />
+                                我的
+                              </>
+                            )}
+                          </button>
+                          <span className="text-xs text-base-content/60">我的錄音</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <button onClick={retry} className="btn btn-outline gap-2">
                   <RotateCcw className="h-4 w-4" />
