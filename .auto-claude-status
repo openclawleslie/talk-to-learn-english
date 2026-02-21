@@ -3,13 +3,13 @@
   "spec": "019-detailed-pronunciation-feedback",
   "state": "building",
   "subtasks": {
-    "completed": 5,
+    "completed": 10,
     "total": 11,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "API Route Updates",
+    "current": "Integration & Testing",
     "id": null,
     "total": 2
   },
@@ -18,8 +18,8 @@
     "max": 1
   },
   "session": {
-    "number": 9,
+    "number": 136,
     "started_at": "2026-02-21T23:11:20.125607"
   },
-  "last_update": "2026-02-21T23:35:57.676011"
+  "last_update": "2026-02-22T00:00:02.638350"
 }
