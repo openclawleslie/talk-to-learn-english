@@ -310,7 +310,7 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
             </div>
 
             {/* Stars Display (for completed or existing) */}
-            {(lastResult || existingSubmission) && (
+            {(lastResult || existingSubmission) && !showCelebration && (
               <div className="flex justify-center gap-1 mb-4">
                 {[1, 2, 3].map((i) => (
                   <Star
