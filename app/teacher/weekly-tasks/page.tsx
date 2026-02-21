@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, BookOpen, Volume2, CheckCircle, Clock } from "lucide-react";
+import { Calendar, BookOpen, Volume2, CheckCircle, Clock, Bell } from "lucide-react";
 
 interface TaskItem {
   weeklyTaskId: string;
@@ -22,10 +22,31 @@ interface WeeklyTask {
   items: TaskItem[];
 }
 
+interface NotificationSummary {
+  total: number;
+  sent: number;
+  pending: number;
+  failed: number;
+}
+
+interface NotificationRecord {
+  id: string;
+  family_id: string;
+  parent_name: string | null;
+  email: string | null;
+  status: "pending" | "sent" | "failed";
+  sent_at: string | null;
+  error: string | null;
+  created_at: string;
+}
+
 export default function TeacherWeeklyTasksPage() {
   const [weeklyTasks, setWeeklyTasks] = useState<WeeklyTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<WeeklyTask | null>(null);
+  const [notificationSummary, setNotificationSummary] = useState<NotificationSummary | null>(null);
+  const [notificationRecords, setNotificationRecords] = useState<NotificationRecord[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   useEffect(() => {
     fetchWeeklyTasks();
@@ -55,6 +76,34 @@ export default function TeacherWeeklyTasksPage() {
     const start = new Date(startDate);
     const end = new Date(endDate);
     return now >= start && now <= end;
+  };
+
+  const openTaskDetail = async (task: WeeklyTask) => {
+    setSelectedTask(task);
+    setNotificationSummary(null);
+    setNotificationRecords([]);
+
+    if (task.status === "published") {
+      setLoadingNotifications(true);
+      try {
+        const response = await fetch(`/api/admin/weekly-tasks/${task.id}/notifications`);
+        if (response.ok) {
+          const data = await response.json();
+          setNotificationSummary(data.data.summary);
+          setNotificationRecords(data.data.notifications || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    }
+  };
+
+  const closeTaskDetail = () => {
+    setSelectedTask(null);
+    setNotificationSummary(null);
+    setNotificationRecords([]);
   };
 
   return (
@@ -120,13 +169,21 @@ export default function TeacherWeeklyTasksPage() {
 
                   <div className="divider my-2" />
 
-                  <div className="text-sm text-base-content/70 mb-2">
-                    共 {task.items.length} 個句子
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm text-base-content/70">
+                      共 {task.items.length} 個句子
+                    </div>
+                    {task.status === "published" && (
+                      <div className="flex items-center gap-1 text-sm text-base-content/60">
+                        <Bell className="h-4 w-4" />
+                        <span>已通知</span>
+                      </div>
+                    )}
                   </div>
 
                   <button
                     className="btn btn-outline btn-sm"
-                    onClick={() => setSelectedTask(task)}
+                    onClick={() => openTaskDetail(task)}
                   >
                     查看詳情
                   </button>
@@ -144,6 +201,7 @@ export default function TeacherWeeklyTasksPage() {
             <h3 className="font-bold text-lg mb-4">
               {selectedTask.className} - {selectedTask.courseName} (第{selectedTask.weekNumber}週)
             </h3>
+
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {selectedTask.items.map((item, index) => (
                 <div key={index} className="border rounded-lg p-3 bg-base-50">
@@ -160,14 +218,91 @@ export default function TeacherWeeklyTasksPage() {
                 </div>
               ))}
             </div>
+
+            {selectedTask.status === "published" && (
+              <div className="mt-6">
+                <h4 className="font-semibold text-base mb-3">通知狀態</h4>
+
+                {loadingNotifications ? (
+                  <div className="flex justify-center py-4">
+                    <span className="loading loading-spinner loading-sm" />
+                  </div>
+                ) : notificationSummary && notificationSummary.total > 0 ? (
+                  <>
+                    <div className="grid grid-cols-4 gap-3 mb-4">
+                      <div className="bg-base-200 rounded p-3 text-center">
+                        <div className="text-2xl font-bold">{notificationSummary.total}</div>
+                        <div className="text-xs text-base-content/60">總計</div>
+                      </div>
+                      <div className="bg-success/20 rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-success">{notificationSummary.sent}</div>
+                        <div className="text-xs text-base-content/60">已發送</div>
+                      </div>
+                      <div className="bg-warning/20 rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-warning">{notificationSummary.pending}</div>
+                        <div className="text-xs text-base-content/60">待發送</div>
+                      </div>
+                      <div className="bg-error/20 rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-error">{notificationSummary.failed}</div>
+                        <div className="text-xs text-base-content/60">失敗</div>
+                      </div>
+                    </div>
+
+                    {notificationRecords.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-base-content/70">家長通知清單</div>
+                        <div className="max-h-60 overflow-y-auto space-y-2">
+                          {notificationRecords.map((record) => (
+                            <div key={record.id} className="rounded border p-3 text-sm">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium">{record.parent_name || "未設定姓名"}</div>
+                                  <div className="text-xs text-base-content/60">{record.email || "未設定信箱"}</div>
+                                </div>
+                                <div>
+                                  <span
+                                    className={`badge badge-sm ${
+                                      record.status === "sent"
+                                        ? "badge-success"
+                                        : record.status === "failed"
+                                        ? "badge-error"
+                                        : "badge-warning"
+                                    }`}
+                                  >
+                                    {record.status === "sent" ? "已發送" : record.status === "failed" ? "失敗" : "待發送"}
+                                  </span>
+                                </div>
+                              </div>
+                              {record.sent_at && (
+                                <div className="text-xs text-base-content/60 mt-1">
+                                  發送時間: {new Date(record.sent_at).toLocaleString("zh-TW")}
+                                </div>
+                              )}
+                              {record.error && (
+                                <div className="text-xs text-error mt-1">
+                                  錯誤: {record.error}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-base-content/60">尚無通知記錄</div>
+                )}
+              </div>
+            )}
+
             <div className="modal-action">
-              <button className="btn" onClick={() => setSelectedTask(null)}>
+              <button className="btn" onClick={closeTaskDetail}>
                 關閉
               </button>
             </div>
           </div>
           <form method="dialog" className="modal-backdrop">
-            <button onClick={() => setSelectedTask(null)}>close</button>
+            <button onClick={closeTaskDetail}>close</button>
           </form>
         </dialog>
       )}
