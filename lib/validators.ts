@@ -205,3 +205,41 @@ export const createSubmissionSchema = z.object({
   audioUrl: z.string().url(),
   transcript: z.string().optional(),
 });
+
+/**
+ * Validation schema for creating a new curriculum tag.
+ *
+ * Curriculum tags enable teachers to align tasks with specific curriculum standards
+ * or textbook chapters. Requires a tag name and optional description.
+ *
+ * @example
+ * ```ts
+ * const tag = createCurriculumTagSchema.parse({
+ *   name: "國小英語課綱 - 聽力",
+ *   description: "Elementary school English curriculum - Listening comprehension"
+ * });
+ * ```
+ */
+export const createCurriculumTagSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().default(""),
+});
+
+/**
+ * Validation schema for updating an existing curriculum tag.
+ *
+ * Allows partial updates to curriculum tag properties.
+ * All fields are optional to support incremental updates.
+ *
+ * @example
+ * ```ts
+ * const updates = updateCurriculumTagSchema.parse({
+ *   name: "國小英語課綱 - 口說",
+ *   description: "Updated description for speaking skills"
+ * });
+ * ```
+ */
+export const updateCurriculumTagSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+});
