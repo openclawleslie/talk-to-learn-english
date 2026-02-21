@@ -8,6 +8,7 @@ import { extensionFromMimeType, normalizeMimeType } from "@/lib/audio-format";
 import { resolveFamilyByToken } from "@/lib/family-link";
 import { fromError, fail, ok } from "@/lib/http";
 import { scoreToStars } from "@/lib/scoring";
+import { sendCompletionNotification } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
   try {
@@ -92,6 +93,46 @@ export async function POST(request: NextRequest) {
         },
       })
       .returning();
+
+    // Phase 6: 发送通知（非阻塞）
+    // Fetch family data for notification
+    const [family] = await db
+      .select()
+      .from(schema.families)
+      .where(eq(schema.families.id, link.familyId))
+      .limit(1);
+
+    // Send notification if family has email and preference is "all"
+    if (family?.parentEmail && family.notificationPreference === "all") {
+      // Send notification asynchronously without blocking response
+      sendCompletionNotification(family.parentEmail, {
+        studentName: student.name,
+        stars,
+        timestamp: submission.createdAt,
+        sentenceText: taskItem.sentenceText,
+      })
+        .then((emailId) => {
+          if (emailId) {
+            // Log successful notification
+            return db.insert(schema.notificationLogs).values({
+              familyId: family.id,
+              notificationType: "practice_complete",
+              sentTo: family.parentEmail!,
+              metadata: {
+                submissionId: submission.id,
+                studentId: student.id,
+                studentName: student.name,
+                stars,
+                emailId,
+              },
+            });
+          }
+        })
+        .catch((error) => {
+          // Log error but don't fail the submission
+          console.error("Failed to send completion notification:", error);
+        });
+    }
 
     return ok(submission, { status: 201 });
   } catch (error) {
