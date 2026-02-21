@@ -1,46 +1,25 @@
 {
   "active": true,
-<<<<<<< HEAD
-  "spec": "003-make-teacher-navigation-mobile-responsive",
+  "spec": "023-progress-report-export",
   "state": "building",
   "subtasks": {
-    "completed": 2,
-    "total": 3,
-=======
-  "spec": "006-memoize-expensive-array-operations-in-studentpract",
-  "state": "building",
-  "subtasks": {
-    "completed": 3,
-    "total": 4,
->>>>>>> auto-claude/006-memoize-expensive-array-operations-in-studentpract
+    "completed": 4,
+    "total": 8,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-<<<<<<< HEAD
-    "current": "Mobile-Responsive Navigation",
+    "current": "Family Export APIs",
     "id": null,
-    "total": 3
-=======
-    "current": "Add useMemo Optimization",
-    "id": null,
-    "total": 4
->>>>>>> auto-claude/006-memoize-expensive-array-operations-in-studentpract
+    "total": 2
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-<<<<<<< HEAD
-    "number": 4,
-    "started_at": "2026-02-20T17:55:37.905742"
+    "number": 6,
+    "started_at": "2026-02-21T23:11:16.666234"
   },
-  "last_update": "2026-02-20T18:06:49.162139"
-=======
-    "number": 5,
-    "started_at": "2026-02-20T21:15:49.341713"
-  },
-  "last_update": "2026-02-20T21:22:18.661240"
->>>>>>> auto-claude/006-memoize-expensive-array-operations-in-studentpract
+  "last_update": "2026-02-21T23:25:04.148007"
 }
