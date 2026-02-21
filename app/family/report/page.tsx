@@ -10,6 +10,8 @@ import {
   CheckCircle,
   AlertTriangle,
   AlertCircle,
+  FileDown,
+  FileSpreadsheet,
 } from "lucide-react";
 
 interface Student {
@@ -37,6 +39,8 @@ function ReportContent() {
   const [data, setData] = useState<PerformanceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -66,6 +70,52 @@ function ReportContent() {
 
   const getStudentName = (studentId: string) =>
     data?.students.find((s) => s.id === studentId)?.name || "未知";
+
+  const handleExportPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      const response = await fetch(`/api/family/export/pdf?token=${encodeURIComponent(token)}`);
+      if (!response.ok) {
+        throw new Error("匯出失敗");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `學習報告-${new Date().toLocaleDateString()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      alert("PDF 匯出失敗，請稍後再試");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setIsExportingExcel(true);
+      const response = await fetch(`/api/family/export/excel?token=${encodeURIComponent(token)}`);
+      if (!response.ok) {
+        throw new Error("匯出失敗");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `學習報告-${new Date().toLocaleDateString()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      alert("Excel 匯出失敗，請稍後再試");
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -107,11 +157,41 @@ function ReportContent() {
       {/* Header */}
       <div className="card bg-gradient-to-r from-primary to-secondary text-primary-content shadow-xl">
         <div className="card-body">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6" />
-            學習報告
-          </h1>
-          <p className="opacity-90">查看孩子的學習表現與成績統計</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <BarChart3 className="h-6 w-6" />
+                學習報告
+              </h1>
+              <p className="opacity-90">查看孩子的學習表現與成績統計</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleExportPdf}
+                disabled={isExportingPdf}
+                className="btn btn-primary gap-2"
+              >
+                {isExportingPdf ? (
+                  <span className="loading loading-spinner loading-sm" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                匯出 PDF
+              </button>
+              <button
+                onClick={handleExportExcel}
+                disabled={isExportingExcel}
+                className="btn btn-secondary gap-2"
+              >
+                {isExportingExcel ? (
+                  <span className="loading loading-spinner loading-sm" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4" />
+                )}
+                匯出 Excel
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
