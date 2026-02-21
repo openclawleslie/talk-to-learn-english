@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronLeft, Pause, Mic, Square, Star, Volume2, Check, RotateCcw } from "lucide-react";
 import type { FamilyData } from "./page";
 import { StarCelebration } from "@/components/star-celebration";
+import { DeadlineCountdown } from "@/components/deadline-countdown";
 
 import {
   chooseSupportedRecorderMimeType,
@@ -268,6 +269,12 @@ export function StudentPractice({ data, student, token, onBack, onRefresh }: Pro
           </div>
           <div className="text-sm font-medium">{completedCount}/{data.items.length}</div>
         </div>
+        {/* Deadline Countdown */}
+        {data.task?.deadline && (
+          <div className="mt-3">
+            <DeadlineCountdown deadline={data.task.deadline} />
+          </div>
+        )}
       </div>
 
       {/* Main Content */}

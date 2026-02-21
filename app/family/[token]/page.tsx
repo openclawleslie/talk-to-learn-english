@@ -17,6 +17,7 @@ type Task = {
   id: string;
   weekStart: string;
   weekEnd: string;
+  deadline: string | null;
 };
 type Submission = {
   id: string;
