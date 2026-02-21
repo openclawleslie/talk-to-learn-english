@@ -36,7 +36,7 @@ type Props = {
 };
 
 export function ParentDashboard({ data, token, onBack, onSelectStudent }: Props) {
-  const [activeTab, setActiveTab] = useState<"stats" | "homework">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "homework" | "progress">("stats");
   const [performance, setPerformance] = useState<PerformanceData | null>(null);
   const [loadingPerf, setLoadingPerf] = useState(true);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
@@ -121,6 +121,12 @@ export function ParentDashboard({ data, token, onBack, onSelectStudent }: Props)
           >
             學生作業
           </button>
+          <button
+            className={`tab flex-1 ${activeTab === "progress" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("progress")}
+          >
+            學習進度
+          </button>
         </div>
       </div>
 
@@ -135,13 +141,19 @@ export function ParentDashboard({ data, token, onBack, onSelectStudent }: Props)
             loadingPerf={loadingPerf}
             data={data}
           />
-        ) : (
+        ) : activeTab === "homework" ? (
           <HomeworkView
             data={data}
             submissionsByStudent={submissionsByStudent}
             expandedItem={expandedItem}
             setExpandedItem={setExpandedItem}
             onSelectStudent={onSelectStudent}
+          />
+        ) : (
+          <ProgressView
+            data={data}
+            performance={performance}
+            loadingPerf={loadingPerf}
           />
         )}
       </div>
@@ -370,6 +382,36 @@ function HomeworkView({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ProgressView({
+  data,
+  performance,
+  loadingPerf,
+}: {
+  data: FamilyData;
+  performance: PerformanceData | null;
+  loadingPerf: boolean;
+}) {
+  if (loadingPerf) {
+    return (
+      <div className="flex justify-center py-8">
+        <span className="loading loading-spinner loading-md" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Placeholder for charts - will be implemented in subsequent subtasks */}
+      <div className="card bg-base-100 shadow">
+        <div className="card-body">
+          <h3 className="font-semibold text-base-content/70 mb-4">學習進度</h3>
+          <p className="text-base-content/60">圖表即將推出...</p>
+        </div>
+      </div>
     </div>
   );
 }
