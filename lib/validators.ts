@@ -205,3 +205,86 @@ export const createSubmissionSchema = z.object({
   audioUrl: z.string().url(),
   transcript: z.string().optional(),
 });
+
+/**
+ * Validation schema for bulk publishing weekly tasks.
+ *
+ * Allows teachers to publish multiple tasks at once by providing an array of task IDs.
+ * All tasks must belong to classes the teacher has access to.
+ *
+ * @example
+ * ```ts
+ * const input = bulkPublishSchema.parse({
+ *   taskIds: [
+ *     "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+ *     "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6"
+ *   ]
+ * });
+ * ```
+ */
+export const bulkPublishSchema = z.object({
+  taskIds: z.array(z.string().uuid()).min(1),
+});
+
+/**
+ * Validation schema for bulk unpublishing weekly tasks.
+ *
+ * Allows teachers to unpublish (set to draft status) multiple tasks at once.
+ * All tasks must belong to classes the teacher has access to.
+ *
+ * @example
+ * ```ts
+ * const input = bulkUnpublishSchema.parse({
+ *   taskIds: [
+ *     "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+ *     "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6"
+ *   ]
+ * });
+ * ```
+ */
+export const bulkUnpublishSchema = z.object({
+  taskIds: z.array(z.string().uuid()).min(1),
+});
+
+/**
+ * Validation schema for duplicating a weekly task to another class.
+ *
+ * Copies a task and all its items from a source task to a new class-course
+ * with specified date range. Teacher must have access to both source and target.
+ *
+ * @example
+ * ```ts
+ * const input = duplicateTaskSchema.parse({
+ *   sourceTaskId: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+ *   targetClassCourseId: "b3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+ *   weekStart: "2026-02-24T00:00:00Z",
+ *   weekEnd: "2026-03-02T23:59:59Z"
+ * });
+ * ```
+ */
+export const duplicateTaskSchema = z.object({
+  sourceTaskId: z.string().uuid(),
+  targetClassCourseId: z.string().uuid(),
+  weekStart: z.string().datetime(),
+  weekEnd: z.string().datetime(),
+});
+
+/**
+ * Validation schema for copying task items between tasks.
+ *
+ * Replaces all items in the target task with items from the source task.
+ * Both tasks must belong to classes the teacher has access to.
+ * Warning: This operation deletes existing items in the target task.
+ *
+ * @example
+ * ```ts
+ * const input = copyTaskItemsSchema.parse({
+ *   sourceTaskId: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+ *   targetTaskId: "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6"
+ * });
+ * ```
+ */
+export const copyTaskItemsSchema = z.object({
+  sourceTaskId: z.string().uuid(),
+  targetTaskId: z.string().uuid(),
+});
