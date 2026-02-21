@@ -6,6 +6,8 @@ import { Plus, Link as LinkIcon, Copy, RefreshCw, Users, User, Edit } from "luci
 interface Family {
   id: string;
   parentName: string;
+  parentEmail: string | null;
+  notificationPreference: string | null;
   note: string | null;
   classCourseId: string;
   className: string | null;
@@ -34,6 +36,8 @@ export default function TeacherFamiliesPage() {
   const [editingFamily, setEditingFamily] = useState<Family | null>(null);
   const [formData, setFormData] = useState({
     parentName: "",
+    parentEmail: "",
+    notificationPreference: "none",
     note: "",
     classCourseId: "",
     students: [{ name: "" }] as Student[],
@@ -83,6 +87,8 @@ export default function TeacherFamiliesPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             parentName: formData.parentName,
+            parentEmail: formData.parentEmail,
+            notificationPreference: formData.notificationPreference,
             note: formData.note,
             students: formData.students,
           }),
@@ -156,6 +162,8 @@ export default function TeacherFamiliesPage() {
     setEditingFamily(family);
     setFormData({
       parentName: family.parentName,
+      parentEmail: family.parentEmail || "",
+      notificationPreference: family.notificationPreference || "none",
       note: family.note || "",
       classCourseId: family.classCourseId,
       students: family.students.map((s) => ({ id: s.id, name: s.name })),
@@ -168,6 +176,8 @@ export default function TeacherFamiliesPage() {
     setEditingFamily(null);
     setFormData({
       parentName: "",
+      parentEmail: "",
+      notificationPreference: "none",
       note: "",
       classCourseId: "",
       students: [{ name: "" }],
@@ -424,6 +434,38 @@ export default function TeacherFamiliesPage() {
                   className="input input-bordered"
                   required
                 />
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">家長電子郵件</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.parentEmail}
+                  onChange={(e) =>
+                    setFormData({ ...formData, parentEmail: e.target.value })
+                  }
+                  placeholder="例如：parent@example.com"
+                  className="input input-bordered"
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">通知偏好</span>
+                </label>
+                <select
+                  value={formData.notificationPreference}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notificationPreference: e.target.value })
+                  }
+                  className="select select-bordered"
+                >
+                  <option value="none">無通知</option>
+                  <option value="email">電子郵件通知</option>
+                  <option value="all">所有通知</option>
+                </select>
               </div>
 
               <div className="form-control">
