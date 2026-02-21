@@ -2,6 +2,8 @@ import OpenAI from "openai";
 
 import { extensionFromMimeType, mimeTypeFromUrl, normalizeMimeType } from "@/lib/audio-format";
 import { env } from "@/lib/env";
+import type { DetailedFeedback, PronunciationTip } from "@/lib/types/pronunciation";
+import { alignWords } from "@/lib/word-alignment";
 
 /**
  * Creates an OpenAI client instance if API credentials are configured.
@@ -101,16 +103,68 @@ export async function transcribeAudioFromUrl(audioUrl: string) {
 }
 
 /**
+ * Generates pronunciation improvement tips in Traditional Chinese based on error patterns.
+ *
+ * @param words - Aligned words from word alignment
+ * @returns Array of pronunciation tips
+ * @internal
+ */
+function generatePronunciationTips(words: DetailedFeedback["words"]): PronunciationTip[] {
+  const tips: PronunciationTip[] = [];
+  const incorrectWords = words.filter((w) => w.status === "incorrect");
+  const missingWords = words.filter((w) => w.status === "missing");
+  const extraWords = words.filter((w) => w.status === "extra");
+
+  // Tip for incorrect words
+  if (incorrectWords.length > 0) {
+    const examples = incorrectWords.slice(0, 3).map((w) => w.text);
+    tips.push({
+      message: `注意這些字的發音：${examples.join("、")}。請再聽一次示範音檔，仔細模仿發音。`,
+      example: examples.join(", "),
+    });
+  }
+
+  // Tip for missing words
+  if (missingWords.length > 0) {
+    const examples = missingWords.slice(0, 3).map((w) => w.text);
+    tips.push({
+      message: `您漏掉了一些字：${examples.join("、")}。請確保說出完整的句子。`,
+      example: examples.join(", "),
+    });
+  }
+
+  // Tip for extra words
+  if (extraWords.length > 0) {
+    tips.push({
+      message: "您說了一些多餘的字。請只說出題目要求的句子內容。",
+    });
+  }
+
+  // General encouragement tip if doing well
+  if (incorrectWords.length === 0 && missingWords.length === 0 && extraWords.length === 0) {
+    tips.push({
+      message: "太棒了！您的發音非常準確。繼續保持！",
+    });
+  } else if (incorrectWords.length + missingWords.length + extraWords.length <= 2) {
+    tips.push({
+      message: "做得很好！再多練習幾次，您會越來越進步的。",
+    });
+  }
+
+  return tips;
+}
+
+/**
  * Evaluates how accurately a child spoke a target English sentence using AI scoring.
  *
  * The AI model compares the target sentence with the actual transcript and returns
- * a score (0-100) plus feedback. The score is automatically clamped to the valid range
- * and rounded to the nearest integer.
+ * a score (0-100), feedback message, and detailed word-level analysis with
+ * pronunciation tips in Traditional Chinese.
  *
  * @param input - Object containing the target sentence and actual transcript
  * @param input.sentence - The target English sentence the child should speak
  * @param input.transcript - The actual transcribed text from the child's speech
- * @returns Object containing score (0-100) and feedback message
+ * @returns Object containing score (0-100), feedback message, and detailed feedback
  * @throws {Error} If AI service is not configured, scoring fails, or response is invalid
  *
  * @example
@@ -121,8 +175,8 @@ export async function transcribeAudioFromUrl(audioUrl: string) {
  * });
  * console.log(`Score: ${result.score}/100`);
  * console.log(`Feedback: ${result.feedback}`);
- * // Output: Score: 95/100
- * // Feedback: Great job! Minor punctuation difference.
+ * console.log(`Words:`, result.detailedFeedback.words);
+ * console.log(`Tips:`, result.detailedFeedback.tips);
  * ```
  */
 export async function scoreSpokenSentence(input: { sentence: string; transcript: string }) {
@@ -145,9 +199,24 @@ export async function scoreSpokenSentence(input: { sentence: string; transcript:
   }
 
   const parsed = JSON.parse(response.output_text) as { score: number; feedback: string };
+
+  // Generate detailed word-level feedback
+  const words = alignWords({
+    reference: input.sentence,
+    transcript: input.transcript,
+  });
+
+  const tips = generatePronunciationTips(words);
+
+  const detailedFeedback: DetailedFeedback = {
+    words,
+    tips,
+  };
+
   return {
     score: Math.min(100, Math.max(0, Math.round(parsed.score))),
     feedback: parsed.feedback,
+    detailedFeedback,
   };
 }
 
