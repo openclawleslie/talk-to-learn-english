@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
 import { fail, fromError, ok } from "@/lib/http";
+import { getTaskNotificationStatus } from "@/lib/notifications";
 
 type RouteContext = {
   params: Promise<{
@@ -25,19 +26,21 @@ export async function GET(request: Request, context: RouteContext) {
       return fail("Weekly task not found", 404, { id: taskId });
     }
 
-    const notifications = await db
-      .select({
-        id: schema.taskNotifications.id,
-        family_id: schema.taskNotifications.familyId,
-        status: schema.taskNotifications.status,
-        sent_at: schema.taskNotifications.sentAt,
-        error: schema.taskNotifications.error,
-        created_at: schema.taskNotifications.createdAt,
-      })
-      .from(schema.taskNotifications)
-      .where(eq(schema.taskNotifications.weeklyTaskId, taskId));
+    const { summary, notifications } = await getTaskNotificationStatus(taskId);
 
-    return ok({ notifications });
+    return ok({
+      summary,
+      notifications: notifications.map((n) => ({
+        id: n.id,
+        family_id: n.familyId,
+        parent_name: n.parentName,
+        email: n.email,
+        status: n.status,
+        sent_at: n.sentAt,
+        error: n.error,
+        created_at: n.createdAt,
+      }))
+    });
   } catch (error) {
     return fromError(error);
   }

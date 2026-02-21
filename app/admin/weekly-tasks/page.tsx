@@ -44,6 +44,24 @@ interface TaskPreviewItem {
   reference_audio_status: "ready" | "pending" | "failed";
 }
 
+interface NotificationSummary {
+  total: number;
+  sent: number;
+  pending: number;
+  failed: number;
+}
+
+interface NotificationRecord {
+  id: string;
+  family_id: string;
+  parent_name: string | null;
+  email: string | null;
+  status: "pending" | "sent" | "failed";
+  sent_at: string | null;
+  error: string | null;
+  created_at: string;
+}
+
 export default function AdminWeeklyTasksPage() {
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [classCourses, setClassCourses] = useState<ClassCourse[]>([]);
@@ -59,6 +77,8 @@ export default function AdminWeeklyTasksPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [notificationSummary, setNotificationSummary] = useState<NotificationSummary | null>(null);
+  const [notificationRecords, setNotificationRecords] = useState<NotificationRecord[]>([]);
   const [weekStart, setWeekStart] = useState(() => {
     const today = new Date();
     const monday = new Date(today);
@@ -223,15 +243,27 @@ export default function AdminWeeklyTasksPage() {
     setPreviewLoading(true);
     setPreviewError("");
     setPreviewItems([]);
+    setNotificationSummary(null);
+    setNotificationRecords([]);
     setShowPreviewModal(true);
     try {
-      const response = await fetch(`/api/admin/weekly-tasks/${taskId}`);
-      const data = await response.json();
-      if (response.ok) {
-        setPreviewTask(data.data.task);
-        setPreviewItems(data.data.items || []);
+      const [taskResponse, notificationsResponse] = await Promise.all([
+        fetch(`/api/admin/weekly-tasks/${taskId}`),
+        fetch(`/api/admin/weekly-tasks/${taskId}/notifications`),
+      ]);
+      const taskData = await taskResponse.json();
+      const notificationsData = await notificationsResponse.json();
+
+      if (taskResponse.ok) {
+        setPreviewTask(taskData.data.task);
+        setPreviewItems(taskData.data.items || []);
       } else {
-        setPreviewError(data.error?.message || "載入失敗");
+        setPreviewError(taskData.error?.message || "載入失敗");
+      }
+
+      if (notificationsResponse.ok) {
+        setNotificationSummary(notificationsData.data.summary);
+        setNotificationRecords(notificationsData.data.notifications || []);
       }
     } catch (error) {
       setPreviewError("網路錯誤");
@@ -245,6 +277,8 @@ export default function AdminWeeklyTasksPage() {
     setPreviewTask(null);
     setPreviewItems([]);
     setPreviewError("");
+    setNotificationSummary(null);
+    setNotificationRecords([]);
   };
 
   const handlePublishTask = async (taskId: string) => {
@@ -592,6 +626,78 @@ export default function AdminWeeklyTasksPage() {
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              )}
+
+              {!previewLoading && !previewError && previewTask?.status === "published" && (
+                <div className="mt-6">
+                  <h4 className="font-semibold text-base mb-3">通知狀態</h4>
+
+                  {notificationSummary && notificationSummary.total > 0 ? (
+                    <>
+                      <div className="grid grid-cols-4 gap-3 mb-4">
+                        <div className="bg-base-200 rounded p-3 text-center">
+                          <div className="text-2xl font-bold">{notificationSummary.total}</div>
+                          <div className="text-xs text-base-content/60">總計</div>
+                        </div>
+                        <div className="bg-success/20 rounded p-3 text-center">
+                          <div className="text-2xl font-bold text-success">{notificationSummary.sent}</div>
+                          <div className="text-xs text-base-content/60">已發送</div>
+                        </div>
+                        <div className="bg-warning/20 rounded p-3 text-center">
+                          <div className="text-2xl font-bold text-warning">{notificationSummary.pending}</div>
+                          <div className="text-xs text-base-content/60">待發送</div>
+                        </div>
+                        <div className="bg-error/20 rounded p-3 text-center">
+                          <div className="text-2xl font-bold text-error">{notificationSummary.failed}</div>
+                          <div className="text-xs text-base-content/60">失敗</div>
+                        </div>
+                      </div>
+
+                      {notificationRecords.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-base-content/70">家長通知清單</div>
+                          <div className="max-h-60 overflow-y-auto space-y-2">
+                            {notificationRecords.map((record) => (
+                              <div key={record.id} className="rounded border p-3 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium">{record.parent_name || "未設定姓名"}</div>
+                                    <div className="text-xs text-base-content/60">{record.email || "未設定信箱"}</div>
+                                  </div>
+                                  <div>
+                                    <span
+                                      className={`badge badge-sm ${
+                                        record.status === "sent"
+                                          ? "badge-success"
+                                          : record.status === "failed"
+                                          ? "badge-error"
+                                          : "badge-warning"
+                                      }`}
+                                    >
+                                      {record.status === "sent" ? "已發送" : record.status === "failed" ? "失敗" : "待發送"}
+                                    </span>
+                                  </div>
+                                </div>
+                                {record.sent_at && (
+                                  <div className="text-xs text-base-content/60 mt-1">
+                                    發送時間: {new Date(record.sent_at).toLocaleString("zh-TW")}
+                                  </div>
+                                )}
+                                {record.error && (
+                                  <div className="text-xs text-error mt-1">
+                                    錯誤: {record.error}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm text-base-content/60">尚無通知記錄</div>
                   )}
                 </div>
               )}
