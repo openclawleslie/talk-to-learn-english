@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, Clock, Star, TrendingUp, ChevronRight, Play, Volume2, AlertTriangle } from "lucide-react";
 import type { FamilyData } from "./page";
+import { ProgressDashboard } from "./progress-dashboard";
 
 type Student = { id: string; name: string };
 type LowScoreItem = {
@@ -154,6 +155,7 @@ export function ParentDashboard({ data, token, onBack, onSelectStudent }: Props)
             data={data}
             performance={performance}
             loadingPerf={loadingPerf}
+            token={token}
           />
         )}
       </div>
@@ -390,28 +392,12 @@ function ProgressView({
   data,
   performance,
   loadingPerf,
+  token,
 }: {
   data: FamilyData;
   performance: PerformanceData | null;
   loadingPerf: boolean;
+  token: string;
 }) {
-  if (loadingPerf) {
-    return (
-      <div className="flex justify-center py-8">
-        <span className="loading loading-spinner loading-md" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Placeholder for charts - will be implemented in subsequent subtasks */}
-      <div className="card bg-base-100 shadow">
-        <div className="card-body">
-          <h3 className="font-semibold text-base-content/70 mb-4">學習進度</h3>
-          <p className="text-base-content/60">圖表即將推出...</p>
-        </div>
-      </div>
-    </div>
-  );
+  return <ProgressDashboard token={token} />;
 }
