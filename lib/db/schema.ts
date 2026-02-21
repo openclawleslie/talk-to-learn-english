@@ -162,6 +162,7 @@ export const submissions = pgTable(
     score: integer("score").notNull(),
     stars: integer("stars").notNull(),
     feedback: text("feedback").notNull(),
+    detailedFeedback: jsonb("detailed_feedback"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("submission_student_task_unique").on(t.studentId, t.taskItemId)],
