@@ -1,0 +1,1 @@
+ALTER TABLE "weekly_tasks" ALTER COLUMN "deadline" DROP NOT NULL;

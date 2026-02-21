@@ -126,6 +126,7 @@ export const scoringConfigSchema = z.object({
  *   classCourseIds: ["f47ac10b-58cc-4372-a567-0e02b2c3d479"],
  *   weekStart: "2026-02-17T00:00:00Z",
  *   weekEnd: "2026-02-23T23:59:59Z",
+ *   deadline: "2026-02-23T18:00:00Z",
  *   status: "published",
  *   items: [
  *     {
@@ -142,6 +143,7 @@ export const weeklyTaskSchema = z.object({
   classCourseIds: z.array(z.string().uuid()).min(1),
   weekStart: z.string().datetime(),
   weekEnd: z.string().datetime(),
+  deadline: z.string().datetime().optional(),
   status: z.enum(["draft", "published"]).default("published"),
   items: z
     .array(

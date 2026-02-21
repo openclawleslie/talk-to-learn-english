@@ -124,7 +124,7 @@ export const weeklyTasks = pgTable(
       .references(() => classCourses.id, { onDelete: "cascade" }),
     weekStart: timestamp("week_start", { withTimezone: true }).notNull(),
     weekEnd: timestamp("week_end", { withTimezone: true }).notNull(),
-    deadline: timestamp("deadline", { withTimezone: true }).notNull(),
+    deadline: timestamp("deadline", { withTimezone: true }),
     status: weeklyTaskStatusEnum("status").notNull().default("draft"),
     createdByAdmin: uuid("created_by_admin")
       .notNull()
