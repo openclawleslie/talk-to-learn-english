@@ -44,6 +44,64 @@ test.describe('管理员端测试', () => {
       // 应该回到登录页
       await expect(page).toHaveURL(/\/admin\/login/);
     });
+
+    test('TC-ADMIN-004: 管理员登录速率限制', async ({ page }) => {
+      await page.goto('/admin/login');
+
+      // 尝试5次失败的登录（达到速率限制）
+      for (let i = 0; i < 5; i++) {
+        await page.fill('#username', 'wrong_user_' + i);
+        await page.fill('#password', 'wrong_password_' + i);
+        await page.click('button[type="submit"]');
+
+        // 等待错误消息显示
+        await expect(page.locator('.alert-error')).toBeVisible({ timeout: 5000 });
+
+        // 清空表单准备下一次尝试
+        await page.fill('#username', '');
+        await page.fill('#password', '');
+      }
+
+      // 第6次尝试应该被速率限制阻止
+      await page.fill('#username', 'wrong_user_6');
+      await page.fill('#password', 'wrong_password_6');
+
+      // 监听网络请求以验证429状态码
+      const responsePromise = page.waitForResponse(
+        response => response.url().includes('/api/auth/admin/login') && response.status() === 429
+      );
+
+      await page.click('button[type="submit"]');
+
+      // 验证收到429响应
+      const response = await responsePromise;
+      expect(response.status()).toBe(429);
+
+      // 验证显示速率限制错误消息
+      await expect(page.locator('.alert-error')).toContainText(/too many|速率|限制|请稍后/i);
+    });
+
+    test('TC-ADMIN-005: 成功登录后速率限制重置', async ({ page }) => {
+      await page.goto('/admin/login');
+
+      // 先尝试几次失败的登录
+      for (let i = 0; i < 3; i++) {
+        await page.fill('#username', 'wrong_user_' + i);
+        await page.fill('#password', 'wrong_password_' + i);
+        await page.click('button[type="submit"]');
+        await expect(page.locator('.alert-error')).toBeVisible({ timeout: 5000 });
+        await page.fill('#username', '');
+        await page.fill('#password', '');
+      }
+
+      // 然后使用正确的凭证登录
+      await page.fill('#username', ADMIN_USERNAME);
+      await page.fill('#password', ADMIN_PASSWORD);
+      await page.click('button[type="submit"]');
+
+      // 应该能成功登录
+      await expect(page).toHaveURL(/\/admin\/classes/, { timeout: 10000 });
+    });
   });
 
   // ============================================
