@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, BookOpen, Volume2, CheckCircle, Clock } from "lucide-react";
+import { Calendar, BookOpen, Volume2, CheckCircle, Clock, Copy, Eye, EyeOff } from "lucide-react";
 
 interface TaskItem {
   weeklyTaskId: string;
@@ -26,6 +26,7 @@ export default function TeacherWeeklyTasksPage() {
   const [weeklyTasks, setWeeklyTasks] = useState<WeeklyTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<WeeklyTask | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchWeeklyTasks();
@@ -57,6 +58,35 @@ export default function TeacherWeeklyTasksPage() {
     return now >= start && now <= end;
   };
 
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTaskIds.length === weeklyTasks.length) {
+      setSelectedTaskIds([]);
+    } else {
+      setSelectedTaskIds(weeklyTasks.map((task) => task.id));
+    }
+  };
+
+  const handleBulkPublish = async () => {
+    // TODO: Implement bulk publish API call
+    alert(`發布 ${selectedTaskIds.length} 個任務 (功能開發中)`);
+  };
+
+  const handleBulkUnpublish = async () => {
+    // TODO: Implement bulk unpublish API call
+    alert(`取消發布 ${selectedTaskIds.length} 個任務 (功能開發中)`);
+  };
+
+  const handleBulkDuplicate = async () => {
+    // TODO: Implement bulk duplicate API call
+    alert(`複製 ${selectedTaskIds.length} 個任務 (功能開發中)`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -69,6 +99,57 @@ export default function TeacherWeeklyTasksPage() {
           <p className="text-base-content/70">查看您負責課程的每週口說任務</p>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {weeklyTasks.length > 0 && (
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedTaskIds.length === weeklyTasks.length && weeklyTasks.length > 0}
+                    onChange={toggleSelectAll}
+                    className="checkbox checkbox-sm"
+                  />
+                  <span className="text-sm">
+                    {selectedTaskIds.length > 0
+                      ? `已選擇 ${selectedTaskIds.length} 個任務`
+                      : "全選"}
+                  </span>
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkPublish}
+                  disabled={selectedTaskIds.length === 0}
+                  className="btn btn-sm btn-success gap-1"
+                >
+                  <Eye className="h-4 w-4" />
+                  發布
+                </button>
+                <button
+                  onClick={handleBulkUnpublish}
+                  disabled={selectedTaskIds.length === 0}
+                  className="btn btn-sm btn-warning gap-1"
+                >
+                  <EyeOff className="h-4 w-4" />
+                  取消發布
+                </button>
+                <button
+                  onClick={handleBulkDuplicate}
+                  disabled={selectedTaskIds.length === 0}
+                  className="btn btn-sm btn-outline gap-1"
+                >
+                  <Copy className="h-4 w-4" />
+                  複製
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12">
@@ -85,20 +166,29 @@ export default function TeacherWeeklyTasksPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {weeklyTasks.map((task) => {
             const isCurrent = isCurrentWeek(task.startDate, task.endDate);
+            const isSelected = selectedTaskIds.includes(task.id);
             return (
               <div
                 key={task.id}
-                className={`card bg-base-100 shadow-xl ${isCurrent ? "ring-2 ring-primary" : ""}`}
+                className={`card bg-base-100 shadow-xl ${isCurrent ? "ring-2 ring-primary" : ""} ${isSelected ? "ring-2 ring-accent" : ""}`}
               >
                 <div className="card-body">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="card-title">
-                        {task.className} - {task.courseName}
-                      </h2>
-                      <p className="text-sm text-base-content/60 mt-1">
-                        第{task.weekNumber}週: {formatDate(task.startDate)} ~ {formatDate(task.endDate)}
-                      </p>
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleTaskSelection(task.id)}
+                        className="checkbox checkbox-sm mt-1"
+                      />
+                      <div>
+                        <h2 className="card-title">
+                          {task.className} - {task.courseName}
+                        </h2>
+                        <p className="text-sm text-base-content/60 mt-1">
+                          第{task.weekNumber}週: {formatDate(task.startDate)} ~ {formatDate(task.endDate)}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {isCurrent && (
