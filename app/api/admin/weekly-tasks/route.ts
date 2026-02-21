@@ -19,6 +19,7 @@ export async function GET() {
         course_name: schema.courses.name,
         week_start: schema.weeklyTasks.weekStart,
         week_end: schema.weeklyTasks.weekEnd,
+        deadline: schema.weeklyTasks.deadline,
         status: schema.weeklyTasks.status,
         created_at: schema.weeklyTasks.weekStart, // Use weekStart as a proxy for created_at
       })
