@@ -147,22 +147,19 @@ export const taskItems = pgTable(
   (t) => [uniqueIndex("task_item_order_unique").on(t.weeklyTaskId, t.orderIndex)],
 );
 
-export const submissions = pgTable(
-  "submissions",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
-    taskItemId: uuid("task_item_id")
-      .notNull()
-      .references(() => taskItems.id, { onDelete: "cascade" }),
-    audioUrl: text("audio_url").notNull(),
-    transcript: text("transcript").notNull(),
-    score: integer("score").notNull(),
-    stars: integer("stars").notNull(),
-    feedback: text("feedback").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [uniqueIndex("submission_student_task_unique").on(t.studentId, t.taskItemId)],
-);
+export const submissions = pgTable("submissions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  taskItemId: uuid("task_item_id")
+    .notNull()
+    .references(() => taskItems.id, { onDelete: "cascade" }),
+  attemptNumber: integer("attempt_number").notNull(),
+  audioUrl: text("audio_url").notNull(),
+  transcript: text("transcript").notNull(),
+  score: integer("score").notNull(),
+  stars: integer("stars").notNull(),
+  feedback: text("feedback").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
