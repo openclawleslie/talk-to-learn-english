@@ -23,6 +23,12 @@ interface DashboardStats {
     id: string;
     name: string;
   }[];
+  recentCompletions: {
+    studentName: string;
+    stars: number;
+    score: number;
+    completedAt: string;
+  }[];
 }
 
 export default function TeacherDashboardPage() {
@@ -211,6 +217,65 @@ export default function TeacherDashboardPage() {
           </div>
         </Link>
       </div>
+
+      {/* Recent Completions */}
+      {!isStatsLoading && stats && stats.recentCompletions.length > 0 && (
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <h2 className="card-title text-2xl mb-4">
+              <TrendingUp className="h-6 w-6 text-success" />
+              最近完成的練習
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>學生姓名</th>
+                    <th>星級評分</th>
+                    <th>分數</th>
+                    <th>完成時間</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.recentCompletions.map((completion, index) => (
+                    <tr key={index} className="hover">
+                      <td className="font-medium">{completion.studentName}</td>
+                      <td>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: completion.stars }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-5 w-5 fill-current ${
+                                completion.stars === 3
+                                  ? "text-success"
+                                  : completion.stars === 2
+                                  ? "text-info"
+                                  : "text-warning"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge badge-ghost">{completion.score}</span>
+                      </td>
+                      <td className="text-base-content/60">
+                        {new Date(completion.completedAt).toLocaleString("zh-TW", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Students Not Submitted This Week */}
       {!isStatsLoading && stats && stats.studentsNotSubmitted.length > 0 && (

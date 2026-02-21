@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 
 import { requireTeacher } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
@@ -24,6 +24,7 @@ export async function GET() {
         averageScore: 0,
         starDistribution: { oneStar: 0, twoStar: 0, threeStar: 0 },
         studentsNotSubmitted: [],
+        recentCompletions: [],
       });
     }
 
@@ -41,6 +42,7 @@ export async function GET() {
         averageScore: 0,
         starDistribution: { oneStar: 0, twoStar: 0, threeStar: 0 },
         studentsNotSubmitted: [],
+        recentCompletions: [],
       });
     }
 
@@ -58,6 +60,7 @@ export async function GET() {
         averageScore: 0,
         starDistribution: { oneStar: 0, twoStar: 0, threeStar: 0 },
         studentsNotSubmitted: [],
+        recentCompletions: [],
       });
     }
 
@@ -99,11 +102,34 @@ export async function GET() {
         name: student.name,
       }));
 
+    // Get recent completions (last 10 submissions)
+    const recentCompletionsData = await db
+      .select({
+        studentId: schema.submissions.studentId,
+        studentName: schema.students.name,
+        stars: schema.submissions.stars,
+        score: schema.submissions.score,
+        createdAt: schema.submissions.createdAt,
+      })
+      .from(schema.submissions)
+      .innerJoin(schema.students, eq(schema.submissions.studentId, schema.students.id))
+      .where(inArray(schema.submissions.studentId, studentIds))
+      .orderBy(desc(schema.submissions.createdAt))
+      .limit(10);
+
+    const recentCompletions = recentCompletionsData.map((item) => ({
+      studentName: item.studentName,
+      stars: item.stars,
+      score: item.score,
+      completedAt: item.createdAt,
+    }));
+
     return ok({
       totalSubmissionsThisWeek,
       averageScore: Math.round(averageScore * 10) / 10, // Round to 1 decimal place
       starDistribution,
       studentsNotSubmitted,
+      recentCompletions,
     });
   } catch (error) {
     return fromError(error);
