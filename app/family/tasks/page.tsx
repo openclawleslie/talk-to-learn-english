@@ -14,6 +14,7 @@ import {
   Pause,
   Loader2,
   CheckCircle,
+  Settings,
 } from "lucide-react";
 
 import {
@@ -260,12 +261,18 @@ function TasksContent() {
             <p className="opacity-90">本週尚未發布任務</p>
           )}
           {/* Link to full practice */}
-          {data?.task && (
-            <Link href={`/family/${token}`} className="btn btn-sm btn-ghost mt-2 gap-1 text-primary-content/80 hover:text-primary-content">
-              <Mic className="h-4 w-4" />
-              前往練習頁面
+          <div className="flex gap-2 mt-2">
+            {data?.task && (
+              <Link href={`/family/${token}`} className="btn btn-sm btn-ghost gap-1 text-primary-content/80 hover:text-primary-content">
+                <Mic className="h-4 w-4" />
+                前往練習頁面
+              </Link>
+            )}
+            <Link href={`/family/preferences?token=${token}`} className="btn btn-sm btn-ghost gap-1 text-primary-content/80 hover:text-primary-content">
+              <Settings className="h-4 w-4" />
+              通知設定
             </Link>
-          )}
+          </div>
         </div>
       </div>
       {data && data.students.length > 1 && (
