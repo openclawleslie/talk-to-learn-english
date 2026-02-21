@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
             stars: schema.submissions.stars,
             feedback: schema.submissions.feedback,
             audioUrl: schema.submissions.audioUrl,
+            createdAt: schema.submissions.createdAt,
           })
           .from(schema.submissions)
           .where(and(inArray(schema.submissions.studentId, studentIds), inArray(schema.submissions.taskItemId, items.map((i) => i.id))))

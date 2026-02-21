@@ -142,6 +142,7 @@ export function ParentDashboard({ data, token, onBack, onSelectStudent }: Props)
             expandedItem={expandedItem}
             setExpandedItem={setExpandedItem}
             onSelectStudent={onSelectStudent}
+            deadline={data.task?.deadline}
           />
         )}
       </div>
@@ -267,6 +268,7 @@ type StudentSubmissionData = {
     stars: number;
     feedback: string;
     audioUrl?: string;
+    createdAt: string;
   }>;
   avgScore: number;
   completed: number;
@@ -279,13 +281,22 @@ function HomeworkView({
   expandedItem,
   setExpandedItem,
   onSelectStudent,
+  deadline,
 }: {
   data: FamilyData;
   submissionsByStudent: StudentSubmissionData[];
   expandedItem: string | null;
   setExpandedItem: (id: string | null) => void;
   onSelectStudent: (student: Student) => void;
+  deadline: string | null | undefined;
 }) {
+  // Helper function to check if a submission is late
+  const isSubmissionLate = (submissionCreatedAt: string): boolean => {
+    if (!deadline) return false;
+    const deadlineDate = new Date(deadline);
+    const submissionDate = new Date(submissionCreatedAt);
+    return submissionDate > deadlineDate;
+  };
   return (
     <div className="space-y-4">
       {submissionsByStudent.map(({ student, submissions, avgScore, completed, total }) => (
@@ -333,6 +344,9 @@ function HomeworkView({
                       </div>
                       {sub ? (
                         <div className="flex items-center gap-2">
+                          {isSubmissionLate(sub.createdAt) && (
+                            <span className="badge badge-warning badge-sm font-medium">遲交</span>
+                          )}
                           <span className="text-sm font-medium text-success">{sub.score}分</span>
                           <div className="flex">
                             {[1, 2, 3].map((i) => (

@@ -27,6 +27,7 @@ type Submission = {
   stars: number;
   feedback: string;
   audioUrl?: string;
+  createdAt: string;
 };
 
 export type FamilyData = {
