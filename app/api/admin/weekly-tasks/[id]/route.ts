@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
@@ -45,6 +46,48 @@ export async function GET(request: Request, context: RouteContext) {
       .orderBy(schema.taskItems.orderIndex);
 
     return ok({ task, items });
+  } catch (error) {
+    return fromError(error);
+  }
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  try {
+    await requireAdmin();
+    const { id: taskId } = await context.params;
+
+    const body = await request.json();
+    const { status } = body;
+
+    if (!status || typeof status !== "string") {
+      return fail("Status is required and must be a string", 400, { status });
+    }
+
+    const validStatuses = ["draft", "published"];
+    if (!validStatuses.includes(status)) {
+      return fail("Invalid status", 400, {
+        status,
+        validStatuses,
+      });
+    }
+
+    const [task] = await db
+      .select({ id: schema.weeklyTasks.id })
+      .from(schema.weeklyTasks)
+      .where(eq(schema.weeklyTasks.id, taskId))
+      .limit(1);
+
+    if (!task) {
+      return fail("Weekly task not found", 404, { id: taskId });
+    }
+
+    const [updatedTask] = await db
+      .update(schema.weeklyTasks)
+      .set({ status })
+      .where(eq(schema.weeklyTasks.id, taskId))
+      .returning();
+
+    return ok({ task: updatedTask });
   } catch (error) {
     return fromError(error);
   }
