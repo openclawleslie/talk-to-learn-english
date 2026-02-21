@@ -1,5 +1,7 @@
 import { and, eq, inArray, lt } from "drizzle-orm";
 import jsPDF from "jspdf";
+import { Chart, ChartConfiguration } from "chart.js/auto";
+import { createCanvas } from "canvas";
 import { NextRequest } from "next/server";
 
 import { db, schema } from "@/lib/db/client";
@@ -83,6 +85,49 @@ export async function GET(request: NextRequest) {
     const overallAvg = totalSubmissions > 0 ? submissions.reduce((sum, s) => sum + s.score, 0) / totalSubmissions : 0;
     const completionRate = students.length > 0 ? (submissions.length / (students.length * 10)) * 100 : 0;
 
+    // Generate chart image for PDF
+    let chartImage = "";
+    if (studentStats.length > 0) {
+      const canvas = createCanvas(400, 300);
+      const ctx = canvas.getContext("2d");
+
+      const chartConfig: ChartConfiguration = {
+        type: "bar",
+        data: {
+          labels: studentStats.map((s) => s.studentName),
+          datasets: [
+            {
+              label: "Average Score",
+              data: studentStats.map((s) => s.averageScore),
+              backgroundColor: "rgba(54, 162, 235, 0.5)",
+              borderColor: "rgba(54, 162, 235, 1)",
+              borderWidth: 1,
+            },
+            {
+              label: "Completion Rate (%)",
+              data: studentStats.map((s) => (s.completedTasks / s.totalTasks) * 100),
+              backgroundColor: "rgba(75, 192, 192, 0.5)",
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+            },
+          },
+        },
+      };
+
+      const chart = new Chart(ctx, chartConfig);
+      chartImage = canvas.toDataURL("image/png");
+      chart.destroy(); // Clean up
+    }
+
     // Generate PDF
     const pdf = new jsPDF();
     let yPosition = 20;
@@ -108,6 +153,22 @@ export async function GET(request: NextRequest) {
     yPosition += 7;
     pdf.text(`Average Score: ${overallAvg.toFixed(1)}`, 20, yPosition);
     yPosition += 15;
+
+    // Add performance chart
+    if (chartImage && studentStats.length > 0) {
+      if (yPosition > 200) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      pdf.setFontSize(14);
+      pdf.text("Performance Chart", 20, yPosition);
+      yPosition += 10;
+
+      // Add chart image to PDF
+      pdf.addImage(chartImage, "PNG", 20, yPosition, 170, 120);
+      yPosition += 130;
+    }
 
     // Student Details
     if (studentStats.length > 0) {
