@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
           classCourseId,
           weekStart: new Date(payload.weekStart),
           weekEnd: new Date(payload.weekEnd),
+          deadline: payload.deadline ? new Date(payload.deadline) : undefined,
           status: payload.status,
           createdByAdmin: adminId,
         })
@@ -168,6 +169,7 @@ export async function POST(request: NextRequest) {
           classCourseIdsCount: payload.classCourseIds.length,
           weekStart: payload.weekStart,
           weekEnd: payload.weekEnd,
+          deadline: payload.deadline,
           status: payload.status,
           itemsCount: payload.items.length,
         }
