@@ -27,6 +27,10 @@ export default function TeacherWeeklyTasksPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<WeeklyTask | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showUnpublishModal, setShowUnpublishModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     fetchWeeklyTasks();
@@ -72,14 +76,74 @@ export default function TeacherWeeklyTasksPage() {
     }
   };
 
-  const handleBulkPublish = async () => {
-    // TODO: Implement bulk publish API call
-    alert(`發布 ${selectedTaskIds.length} 個任務 (功能開發中)`);
+  const handleBulkPublish = () => {
+    if (selectedTaskIds.length === 0) {
+      return;
+    }
+    setShowPublishModal(true);
   };
 
-  const handleBulkUnpublish = async () => {
-    // TODO: Implement bulk unpublish API call
-    alert(`取消發布 ${selectedTaskIds.length} 個任務 (功能開發中)`);
+  const handleBulkUnpublish = () => {
+    if (selectedTaskIds.length === 0) {
+      return;
+    }
+    setShowUnpublishModal(true);
+  };
+
+  const confirmBulkPublish = async () => {
+    setIsSubmitting(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/teacher/weekly-tasks/bulk-publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: selectedTaskIds }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage("任務發布成功！");
+        setShowPublishModal(false);
+        setSelectedTaskIds([]);
+        fetchWeeklyTasks();
+      } else {
+        setMessage(typeof data.error === 'string' ? data.error : data.error?.message || "發布失敗");
+      }
+    } catch (error) {
+      setMessage("網路錯誤，請重試");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const confirmBulkUnpublish = async () => {
+    setIsSubmitting(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/teacher/weekly-tasks/bulk-unpublish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: selectedTaskIds }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage("任務取消發布成功！");
+        setShowUnpublishModal(false);
+        setSelectedTaskIds([]);
+        fetchWeeklyTasks();
+      } else {
+        setMessage(typeof data.error === 'string' ? data.error : data.error?.message || "取消發布失敗");
+      }
+    } catch (error) {
+      setMessage("網路錯誤，請重試");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBulkDuplicate = async () => {
@@ -258,6 +322,138 @@ export default function TeacherWeeklyTasksPage() {
           </div>
           <form method="dialog" className="modal-backdrop">
             <button onClick={() => setSelectedTask(null)}>close</button>
+          </form>
+        </dialog>
+      )}
+
+      {/* Bulk Publish Confirmation Modal */}
+      {showPublishModal && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">確認發布任務</h3>
+            <p className="mb-4">您即將發布以下 {selectedTaskIds.length} 個任務：</p>
+            <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+              {weeklyTasks
+                .filter((task) => selectedTaskIds.includes(task.id))
+                .map((task) => (
+                  <div key={task.id} className="border rounded p-2 bg-base-200">
+                    <div className="font-medium">
+                      {task.className} - {task.courseName}
+                    </div>
+                    <div className="text-sm text-base-content/60">
+                      第{task.weekNumber}週: {formatDate(task.startDate)} ~ {formatDate(task.endDate)}
+                    </div>
+                  </div>
+                ))}
+            </div>
+            {message && (
+              <div className={`alert ${message.includes("成功") ? "alert-success" : "alert-error"} mb-4`}>
+                {message}
+              </div>
+            )}
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowPublishModal(false);
+                  setMessage("");
+                }}
+                disabled={isSubmitting}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-success"
+                onClick={confirmBulkPublish}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm" />
+                    發布中...
+                  </>
+                ) : (
+                  "確認發布"
+                )}
+              </button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button
+              onClick={() => {
+                setShowPublishModal(false);
+                setMessage("");
+              }}
+              disabled={isSubmitting}
+            >
+              close
+            </button>
+          </form>
+        </dialog>
+      )}
+
+      {/* Bulk Unpublish Confirmation Modal */}
+      {showUnpublishModal && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">確認取消發布任務</h3>
+            <p className="mb-4">您即將取消發布以下 {selectedTaskIds.length} 個任務：</p>
+            <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+              {weeklyTasks
+                .filter((task) => selectedTaskIds.includes(task.id))
+                .map((task) => (
+                  <div key={task.id} className="border rounded p-2 bg-base-200">
+                    <div className="font-medium">
+                      {task.className} - {task.courseName}
+                    </div>
+                    <div className="text-sm text-base-content/60">
+                      第{task.weekNumber}週: {formatDate(task.startDate)} ~ {formatDate(task.endDate)}
+                    </div>
+                  </div>
+                ))}
+            </div>
+            {message && (
+              <div className={`alert ${message.includes("成功") ? "alert-success" : "alert-error"} mb-4`}>
+                {message}
+              </div>
+            )}
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowUnpublishModal(false);
+                  setMessage("");
+                }}
+                disabled={isSubmitting}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-warning"
+                onClick={confirmBulkUnpublish}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm" />
+                    處理中...
+                  </>
+                ) : (
+                  "確認取消發布"
+                )}
+              </button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button
+              onClick={() => {
+                setShowUnpublishModal(false);
+                setMessage("");
+              }}
+              disabled={isSubmitting}
+            >
+              close
+            </button>
           </form>
         </dialog>
       )}
