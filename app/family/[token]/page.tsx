@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { BookOpen, AlertCircle, Mic, ChevronLeft } from "lucide-react";
+import { BookOpen, AlertCircle, Mic, ChevronLeft, Clock } from "lucide-react";
 import { ParentDashboard } from "./parent-dashboard";
 import { StudentPractice } from "./student-practice";
 
@@ -47,6 +47,25 @@ export default function FamilyTokenPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("parent");
   const [selectedStudent, setSelectedStudent] =
     useState<Student | null>(null);
+
+  function isDeadlineNear(): boolean {
+    if (!data?.task?.deadline) return false;
+    const deadline = new Date(data.task.deadline);
+    const now = new Date();
+    const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return hoursUntilDeadline > 0 && hoursUntilDeadline <= 24;
+  }
+
+  function formatDeadline(): string {
+    if (!data?.task?.deadline) return "";
+    const deadline = new Date(data.task.deadline);
+    return deadline.toLocaleString("zh-TW", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 
   useEffect(() => {
     loadData();
@@ -196,6 +215,20 @@ export default function FamilyTokenPage() {
   // Default: Parent Dashboard + floating "開始練習" button
   return (
     <div className="min-h-screen flex flex-col">
+      {isDeadlineNear() && (
+        <div className="p-4">
+          <div className="alert alert-warning shadow-lg max-w-2xl mx-auto">
+            <Clock className="h-5 w-5 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold">截止時間即將到期！</h3>
+              <div className="text-sm">
+                任務截止時間：{formatDeadline()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="fixed bottom-6 left-0 right-0 z-20 flex justify-center px-4">
         <button
           onClick={handleStartPractice}
