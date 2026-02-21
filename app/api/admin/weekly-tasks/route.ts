@@ -156,7 +156,27 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      await db.insert(schema.taskItems).values(itemRows);
+      const insertedItems = await db.insert(schema.taskItems).values(itemRows).returning();
+
+      const tagRows: Array<{
+        taskItemId: string;
+        curriculumTagId: string;
+      }> = [];
+      for (const insertedItem of insertedItems) {
+        const payloadItem = payload.items.find((item) => item.orderIndex === insertedItem.orderIndex);
+        if (payloadItem) {
+          for (const tagId of payloadItem.tagIds) {
+            tagRows.push({
+              taskItemId: insertedItem.id,
+              curriculumTagId: tagId,
+            });
+          }
+        }
+      }
+
+      if (tagRows.length > 0) {
+        await db.insert(schema.taskItemTags).values(tagRows);
+      }
 
       createdTasks.push(task);
     }

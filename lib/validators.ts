@@ -149,6 +149,7 @@ export const weeklyTaskSchema = z.object({
         orderIndex: z.number().int().min(1).max(10),
         sentenceText: z.string().min(1),
         referenceAudioUrl: z.string().url().optional(),
+        tagIds: z.array(z.string().uuid()).default([]),
       }),
     )
     .length(10),
