@@ -14,6 +14,7 @@ import {
 export const familyLinkStatusEnum = pgEnum("family_link_status", ["active", "revoked"]);
 export const weeklyTaskStatusEnum = pgEnum("weekly_task_status", ["draft", "published"]);
 export const audioStatusEnum = pgEnum("reference_audio_status", ["pending", "ready", "failed"]);
+export const notificationStatusEnum = pgEnum("notification_status", ["pending", "sent", "failed"]);
 
 export const teachers = pgTable(
   "teachers",
@@ -181,3 +182,17 @@ export const notificationPreferences = pgTable(
   },
   (t) => [uniqueIndex("notification_preferences_family_unique").on(t.familyId)],
 );
+
+export const taskNotifications = pgTable("task_notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  weeklyTaskId: uuid("weekly_task_id")
+    .notNull()
+    .references(() => weeklyTasks.id, { onDelete: "cascade" }),
+  familyId: uuid("family_id")
+    .notNull()
+    .references(() => families.id, { onDelete: "cascade" }),
+  status: notificationStatusEnum("status").notNull().default("pending"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
