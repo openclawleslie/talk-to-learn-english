@@ -51,6 +51,7 @@ export default function AdminWeeklyTasksPage() {
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [publishingTaskId, setPublishingTaskId] = useState<string | null>(null);
 
   const [selectedClassCourseIds, setSelectedClassCourseIds] = useState<string[]>([]);
   const [previewTask, setPreviewTask] = useState<TaskPreview | null>(null);
@@ -246,6 +247,35 @@ export default function AdminWeeklyTasksPage() {
     setPreviewError("");
   };
 
+  const handlePublishTask = async (taskId: string) => {
+    if (!confirm("確定要發布此任務嗎？發布後學生將可以看到此任務。")) {
+      return;
+    }
+
+    setPublishingTaskId(taskId);
+    setMessage("");
+
+    try {
+      const response = await fetch(`/api/admin/weekly-tasks/${taskId}/publish`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage("任務發布成功！");
+        fetchTasks();
+      } else {
+        setMessage(typeof data.error === 'string' ? data.error : data.error?.message || "發布失敗");
+      }
+    } catch (error) {
+      setMessage("網路錯誤，請重試");
+    } finally {
+      setPublishingTaskId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -334,13 +364,25 @@ export default function AdminWeeklyTasksPage() {
                       </td>
                       <td>{new Date(task.created_at).toLocaleDateString()}</td>
                       <td>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => openPreview(task.id)}
-                        >
-                          查看
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => openPreview(task.id)}
+                          >
+                            查看
+                          </button>
+                          {task.status === "draft" && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary"
+                              onClick={() => handlePublishTask(task.id)}
+                              disabled={publishingTaskId === task.id}
+                            >
+                              {publishingTaskId === task.id ? "發布中..." : "發布"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
