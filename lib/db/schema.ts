@@ -80,6 +80,7 @@ export const teacherAssignments = pgTable(
 export const families = pgTable("families", {
   id: uuid("id").defaultRandom().primaryKey(),
   parentName: varchar("parent_name", { length: 120 }).notNull(),
+  email: varchar("email", { length: 255 }),
   note: text("note").notNull().default(""),
   classCourseId: uuid("class_course_id")
     .notNull()
