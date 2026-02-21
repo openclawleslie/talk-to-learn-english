@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
         score: scoring.score,
         stars,
         feedback: scoring.feedback,
+        detailedFeedback: scoring.detailedFeedback,
       })
       .onConflictDoUpdate({
         target: [schema.submissions.studentId, schema.submissions.taskItemId],
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
           score: scoring.score,
           stars,
           feedback: scoring.feedback,
+          detailedFeedback: scoring.detailedFeedback,
           createdAt: new Date(),
         },
       })
