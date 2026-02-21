@@ -39,9 +39,12 @@ export default function TeacherWeeklyTasksPage() {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showCopyItemsModal, setShowCopyItemsModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [taskToDuplicate, setTaskToDuplicate] = useState<WeeklyTask | null>(null);
+  const [taskToCopyFrom, setTaskToCopyFrom] = useState<WeeklyTask | null>(null);
+  const [targetTaskId, setTargetTaskId] = useState("");
   const [targetClassCourseId, setTargetClassCourseId] = useState("");
   const [duplicateWeekStart, setDuplicateWeekStart] = useState(() => {
     const today = new Date();
@@ -236,6 +239,52 @@ export default function TeacherWeeklyTasksPage() {
     }
   };
 
+  const handleCopyItems = (task: WeeklyTask) => {
+    setTaskToCopyFrom(task);
+    setTargetTaskId("");
+    setShowCopyItemsModal(true);
+    setMessage("");
+  };
+
+  const confirmCopyItems = async () => {
+    if (!taskToCopyFrom) return;
+
+    if (!targetTaskId) {
+      setMessage("請選擇目標任務");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/teacher/weekly-tasks/copy-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceTaskId: taskToCopyFrom.id,
+          targetTaskId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage("項目複製成功！");
+        setShowCopyItemsModal(false);
+        setTaskToCopyFrom(null);
+        setTargetTaskId("");
+        fetchWeeklyTasks();
+      } else {
+        setMessage(typeof data.error === 'string' ? data.error : data.error?.message || "複製失敗");
+      }
+    } catch (error) {
+      setMessage("網路錯誤，請重試");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -369,6 +418,14 @@ export default function TeacherWeeklyTasksPage() {
                       onClick={() => setSelectedTask(task)}
                     >
                       查看詳情
+                    </button>
+                    <button
+                      className="btn btn-outline btn-sm gap-1"
+                      onClick={() => handleCopyItems(task)}
+                      title="複製項目到其他任務"
+                    >
+                      <Copy className="h-4 w-4" />
+                      複製項目
                     </button>
                     <button
                       className="btn btn-outline btn-sm gap-1"
@@ -647,6 +704,97 @@ export default function TeacherWeeklyTasksPage() {
               onClick={() => {
                 setShowDuplicateModal(false);
                 setTaskToDuplicate(null);
+                setMessage("");
+              }}
+              disabled={isSubmitting}
+            >
+              close
+            </button>
+          </form>
+        </dialog>
+      )}
+
+      {/* Copy Items Modal */}
+      {showCopyItemsModal && taskToCopyFrom && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">複製項目到其他任務</h3>
+            <p className="mb-4 text-sm text-base-content/70">
+              來源任務: {taskToCopyFrom.className} - {taskToCopyFrom.courseName} (第{taskToCopyFrom.weekNumber}週)
+            </p>
+            <p className="mb-2 text-sm text-base-content/70">
+              共 {taskToCopyFrom.items.length} 個項目將被複製
+            </p>
+
+            <div className="form-control mb-4">
+              <label className="label">
+                <span className="label-text">選擇目標任務</span>
+              </label>
+              <select
+                className="select select-bordered"
+                value={targetTaskId}
+                onChange={(e) => setTargetTaskId(e.target.value)}
+              >
+                <option value="">請選擇目標任務</option>
+                {weeklyTasks
+                  .filter((task) => task.id !== taskToCopyFrom.id)
+                  .map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.className} - {task.courseName} (第{task.weekNumber}週: {formatDate(task.startDate)} ~ {formatDate(task.endDate)})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {targetTaskId && (
+              <div className="alert alert-warning mb-4">
+                <div className="text-sm">
+                  ⚠️ 目標任務的現有項目將被覆蓋
+                </div>
+              </div>
+            )}
+
+            {message && (
+              <div className={`alert ${message.includes("成功") ? "alert-success" : "alert-error"} mb-4`}>
+                {message}
+              </div>
+            )}
+
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowCopyItemsModal(false);
+                  setTaskToCopyFrom(null);
+                  setTargetTaskId("");
+                  setMessage("");
+                }}
+                disabled={isSubmitting}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={confirmCopyItems}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm" />
+                    複製中...
+                  </>
+                ) : (
+                  "確認複製"
+                )}
+              </button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button
+              onClick={() => {
+                setShowCopyItemsModal(false);
+                setTaskToCopyFrom(null);
+                setTargetTaskId("");
                 setMessage("");
               }}
               disabled={isSubmitting}
