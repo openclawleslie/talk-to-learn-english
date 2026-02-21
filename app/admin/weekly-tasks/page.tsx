@@ -22,11 +22,18 @@ interface ClassCourse {
   course_name: string | null;
 }
 
+interface CurriculumTag {
+  id: string;
+  name: string;
+  description: string;
+}
+
 interface TaskItem {
   orderIndex: number;
   sentenceText: string;
   audioUrl?: string;
   isGeneratingAudio?: boolean;
+  selectedTags?: string[];
 }
 
 interface TaskPreview {
@@ -47,6 +54,7 @@ interface TaskPreviewItem {
 export default function AdminWeeklyTasksPage() {
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [classCourses, setClassCourses] = useState<ClassCourse[]>([]);
+  const [curriculumTags, setCurriculumTags] = useState<CurriculumTag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,12 +82,14 @@ export default function AdminWeeklyTasksPage() {
     Array.from({ length: 10 }).map((_, i) => ({
       orderIndex: i + 1,
       sentenceText: "",
+      selectedTags: [],
     }))
   );
 
   useEffect(() => {
     fetchTasks();
     fetchClassCourses();
+    fetchCurriculumTags();
   }, []);
 
   const fetchTasks = async () => {
@@ -106,6 +116,18 @@ export default function AdminWeeklyTasksPage() {
       }
     } catch (error) {
       console.error("Failed to fetch class courses:", error);
+    }
+  };
+
+  const fetchCurriculumTags = async () => {
+    try {
+      const response = await fetch("/api/admin/curriculum-tags");
+      if (response.ok) {
+        const data = await response.json();
+        setCurriculumTags(data.data.curriculumTags || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch curriculum tags:", error);
     }
   };
 
@@ -181,6 +203,7 @@ export default function AdminWeeklyTasksPage() {
             orderIndex: item.orderIndex,
             sentenceText: item.sentenceText,
             referenceAudioUrl: item.audioUrl,
+            curriculumTagIds: item.selectedTags || [],
           })),
         }),
       });
@@ -208,6 +231,7 @@ export default function AdminWeeklyTasksPage() {
       Array.from({ length: 10 }).map((_, i) => ({
         orderIndex: i + 1,
         sentenceText: "",
+        selectedTags: [],
       }))
     );
   };
@@ -215,6 +239,21 @@ export default function AdminWeeklyTasksPage() {
   const toggleClassCourse = (id: string) => {
     setSelectedClassCourseIds((prev) =>
       prev.includes(id) ? prev.filter((ccId) => ccId !== id) : [...prev, id]
+    );
+  };
+
+  const toggleItemTag = (itemIndex: number, tagId: string) => {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i === itemIndex) {
+          const selectedTags = item.selectedTags || [];
+          const newTags = selectedTags.includes(tagId)
+            ? selectedTags.filter((id) => id !== tagId)
+            : [...selectedTags, tagId];
+          return { ...item, selectedTags: newTags };
+        }
+        return item;
+      })
     );
   };
 
@@ -417,44 +456,70 @@ export default function AdminWeeklyTasksPage() {
                 <label className="label">
                   <span className="label-text">練習句子（共10句）</span>
                 </label>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-4 max-h-96 overflow-y-auto">
                   {items.map((item, index) => (
-                    <div key={index} className="flex gap-2">
-                      <div className="badge badge-neutral">{index + 1}</div>
-                      <input
-                        type="text"
-                        value={item.sentenceText}
-                        onChange={(e) =>
-                          setItems((prev) =>
-                            prev.map((it, i) =>
-                              i === index ? { ...it, sentenceText: e.target.value } : it
+                    <div key={index} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex gap-2">
+                        <div className="badge badge-neutral">{index + 1}</div>
+                        <input
+                          type="text"
+                          value={item.sentenceText}
+                          onChange={(e) =>
+                            setItems((prev) =>
+                              prev.map((it, i) =>
+                                i === index ? { ...it, sentenceText: e.target.value } : it
+                              )
                             )
-                          )
-                        }
-                        placeholder={`句子 ${index + 1}`}
-                        className="input input-bordered input-sm flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateAudio(index)}
-                        className="btn btn-sm btn-ghost"
-                        disabled={item.isGeneratingAudio || !item.sentenceText.trim()}
-                        title="產生音訊"
-                      >
-                        {item.isGeneratingAudio ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Volume2 className="h-4 w-4" />
-                        )}
-                      </button>
-                      {item.audioUrl && (
-                        <audio
-                          src={item.audioUrl}
-                          controls
-                          className="h-8"
-                          style={{ maxWidth: "200px" }}
+                          }
+                          placeholder={`句子 ${index + 1}`}
+                          className="input input-bordered input-sm flex-1"
                         />
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateAudio(index)}
+                          className="btn btn-sm btn-ghost"
+                          disabled={item.isGeneratingAudio || !item.sentenceText.trim()}
+                          title="產生音訊"
+                        >
+                          {item.isGeneratingAudio ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Volume2 className="h-4 w-4" />
+                          )}
+                        </button>
+                        {item.audioUrl && (
+                          <audio
+                            src={item.audioUrl}
+                            controls
+                            className="h-8"
+                            style={{ maxWidth: "200px" }}
+                          />
+                        )}
+                      </div>
+                      {/* Tag Selection */}
+                      <div className="pl-8">
+                        <div className="text-xs text-base-content/60 mb-1">課綱標籤:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {curriculumTags.length === 0 ? (
+                            <span className="text-xs text-base-content/40">尚無可用標籤</span>
+                          ) : (
+                            curriculumTags.map((tag) => (
+                              <label
+                                key={tag.id}
+                                className="flex items-center gap-1 cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={(item.selectedTags || []).includes(tag.id)}
+                                  onChange={() => toggleItemTag(index, tag.id)}
+                                  className="checkbox checkbox-xs"
+                                />
+                                <span className="text-xs">{tag.name}</span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
