@@ -70,6 +70,7 @@ export default function AdminWeeklyTasksPage() {
     sunday.setDate(today.getDate() - today.getDay() + 7);
     return sunday.toISOString().split("T")[0];
   });
+  const [deadline, setDeadline] = useState("");
   const [items, setItems] = useState<TaskItem[]>(
     Array.from({ length: 10 }).map((_, i) => ({
       orderIndex: i + 1,
@@ -176,6 +177,7 @@ export default function AdminWeeklyTasksPage() {
           classCourseIds: selectedClassCourseIds,
           weekStart: new Date(weekStart).toISOString(),
           weekEnd: new Date(weekEnd).toISOString(),
+          deadline: deadline ? new Date(deadline).toISOString() : undefined,
           status,
           items: items.map((item) => ({
             orderIndex: item.orderIndex,
@@ -204,6 +206,7 @@ export default function AdminWeeklyTasksPage() {
 
   const resetForm = () => {
     setSelectedClassCourseIds([]);
+    setDeadline("");
     setItems(
       Array.from({ length: 10 }).map((_, i) => ({
         orderIndex: i + 1,
@@ -382,6 +385,19 @@ export default function AdminWeeklyTasksPage() {
                     className="input input-bordered"
                   />
                 </div>
+              </div>
+
+              {/* Deadline */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">截止時間（選填）</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="input input-bordered"
+                />
               </div>
 
               {/* Class Courses Selection */}
