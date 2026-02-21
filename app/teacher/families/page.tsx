@@ -463,7 +463,7 @@ export default function TeacherFamiliesPage() {
                   className="select select-bordered"
                 >
                   <option value="none">無通知</option>
-                  <option value="email">電子郵件通知</option>
+                  <option value="weekly_summary">每週總結</option>
                   <option value="all">所有通知</option>
                 </select>
               </div>
