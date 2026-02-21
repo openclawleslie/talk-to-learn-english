@@ -200,6 +200,131 @@ test.describe('教师端测试', () => {
     });
   });
 
+  test.describe('批量操作测试', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/teacher/login');
+      await page.fill('#email', teacherEmail);
+      await page.fill('#password', teacherPassword);
+      await page.click('button[type="submit"]');
+      await page.waitForURL(/\/teacher/, { timeout: 10000 });
+    });
+
+    test('TC-TEACHER-040: 批量發布任務', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 查找草稿任務的複選框
+      const draftCheckboxes = page.locator('input[type="checkbox"][data-status="draft"]');
+      const count = await draftCheckboxes.count();
+
+      if (count > 0) {
+        // 選擇前兩個草稿任務（如果有的話）
+        const selectCount = Math.min(2, count);
+        for (let i = 0; i < selectCount; i++) {
+          await draftCheckboxes.nth(i).check();
+        }
+
+        // 點擊發布按鈕
+        await page.click('button:has-text("發布")');
+
+        // 驗證確認模態框顯示
+        await expect(page.locator('.modal:has-text("確認發布任務")')).toBeVisible();
+        await expect(page.locator('text=個任務')).toBeVisible();
+
+        // 確認發布
+        await page.click('.modal button:has-text("確認發布")');
+
+        // 等待成功提示
+        await expect(page.locator('.alert-success')).toBeVisible({ timeout: 10000 });
+
+        // 驗證頁面刷新後任務狀態更新
+        await page.waitForTimeout(1000);
+        await page.reload();
+
+        // 驗證任務現在顯示為"已發布"狀態
+        const publishedBadges = page.locator('.badge:has-text("已發布")');
+        await expect(publishedBadges.first()).toBeVisible();
+      }
+    });
+
+    test('TC-TEACHER-041: 批量取消發布任務', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 查找已發布任務的複選框
+      const publishedCheckboxes = page.locator('input[type="checkbox"][data-status="published"]');
+      const count = await publishedCheckboxes.count();
+
+      if (count > 0) {
+        // 選擇前兩個已發布任務（如果有的話）
+        const selectCount = Math.min(2, count);
+        for (let i = 0; i < selectCount; i++) {
+          await publishedCheckboxes.nth(i).check();
+        }
+
+        // 點擊取消發布按鈕
+        await page.click('button:has-text("取消發布")');
+
+        // 驗證確認模態框顯示
+        await expect(page.locator('.modal:has-text("確認取消發布任務")')).toBeVisible();
+        await expect(page.locator('text=個任務')).toBeVisible();
+
+        // 確認取消發布
+        await page.click('.modal button:has-text("確認取消發布")');
+
+        // 等待成功提示
+        await expect(page.locator('.alert-success')).toBeVisible({ timeout: 10000 });
+
+        // 驗證頁面刷新後任務狀態更新
+        await page.waitForTimeout(1000);
+        await page.reload();
+
+        // 驗證任務現在顯示為"草稿"狀態
+        const draftBadges = page.locator('.badge:has-text("草稿")');
+        await expect(draftBadges.first()).toBeVisible();
+      }
+    });
+
+    test('TC-TEACHER-042: 批量操作按鈕狀態', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 驗證初始狀態下批量操作按鈕被禁用
+      const publishButton = page.locator('button:has-text("發布")');
+      const unpublishButton = page.locator('button:has-text("取消發布")');
+
+      if (await publishButton.isVisible()) {
+        await expect(publishButton).toBeDisabled();
+      }
+      if (await unpublishButton.isVisible()) {
+        await expect(unpublishButton).toBeDisabled();
+      }
+
+      // 選擇一個任務後，按鈕應該啟用
+      const checkbox = page.locator('input[type="checkbox"]').first();
+      if (await checkbox.isVisible()) {
+        await checkbox.check();
+
+        // 至少一個按鈕應該被啟用（取決於任務狀態）
+        const isPublishEnabled = await publishButton.isEnabled().catch(() => false);
+        const isUnpublishEnabled = await unpublishButton.isEnabled().catch(() => false);
+        expect(isPublishEnabled || isUnpublishEnabled).toBeTruthy();
+      }
+    });
+
+    test('TC-TEACHER-043: 批量選擇UI顯示', async ({ page }) => {
+      await page.goto('/teacher/weekly-tasks');
+
+      // 驗證複選框在任務卡片中顯示
+      const checkboxes = page.locator('input[type="checkbox"]');
+      const count = await checkboxes.count();
+
+      if (count > 0) {
+        await expect(checkboxes.first()).toBeVisible();
+
+        // 驗證批量操作按鈕顯示
+        await expect(page.locator('button:has-text("發布"), button:has-text("取消發布")')).toBeVisible();
+      }
+    });
+  });
+
   test.describe('导航测试', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/teacher/login');

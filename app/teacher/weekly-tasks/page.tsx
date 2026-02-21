@@ -378,6 +378,7 @@ export default function TeacherWeeklyTasksPage() {
                         checked={isSelected}
                         onChange={() => toggleTaskSelection(task.id)}
                         className="checkbox checkbox-sm mt-1"
+                        data-status={task.status}
                       />
                       <div>
                         <h2 className="card-title">
